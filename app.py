@@ -1,8 +1,12 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
+import cv2
+import numpy as np
+from rembg import remove
+from PIL import Image
+import io
 
-# Configurazione globale e layout dell'applicazione (Modalità Wide)
+# Configurazione globale
 st.set_page_config(
     page_title="Vinted Power Seller Suite",
     page_icon="🛍️",
@@ -13,44 +17,50 @@ st.set_page_config(
 st.title("🛍️ Vinted Power Seller Suite")
 st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
 
-# ==========================================
-# CREAZIONE DELLE 4 SCHEDE DI GESTIONE
-# ==========================================
+# Creazione delle 4 schede
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📸 Studio Fotografico (Manuale)", 
-    "📝 Generatore Descrizioni AI", 
+    "📸 Studio Fotografico AI", 
+    "📝 Generatore Descrizioni", 
     "💰 Calcolatore Prezzi & Lotti", 
     "📊 Trend & Ricerca Rapida"
 ])
 
 # ==========================================
-# TAB 1: STUDIO FOTOGRAFICO (Manuale Pro)
+# TAB 1: STUDIO FOTOGRAFICO (Elaborazione Locale)
 # ==========================================
 with tab1:
-    st.header("📸 Studio Fotografico: Setup Professionale")
-    st.write("Segui le linee guida per ottenere foto catalogo di alta qualità senza dipendere da AI esterne.")
-
-    col_foto1, col_foto2 = st.columns([1.3, 1.7], gap="large")
+    st.header("📸 Studio Fotografico: AI Processing Locale")
+    st.write("Carica una foto per rimuovere lo sfondo e levigare le pieghe del tessuto.")
     
-    with col_foto1:
-        st.markdown("### 1️⃣ Check-list Attrezzatura")
-        st.write("• **Sfondo:** Parete bianca o pannello di cartongesso grigio.")
-        st.write("• **Luce:** Luce naturale (vicino a una finestra) o due Softbox LED.")
-        st.write("• **Esposizione:** Gruccia in legno (non plastica) per capi appesi.")
-        st.markdown("### 2️⃣ Parametri Fotocamera/Smartphone")
-        st.write("• **ISO:** 100-200 (per evitare rumore).")
-        st.write("• **Bianco:** Bilanciamento manuale su bianco neutro.")
-        st.write("• **Inquadratura:** Livello occhi, centratura perfetta.")
-
-    with col_foto2:
-        st.markdown("### 3️⃣ Workflow Post-Produzione Consigliato")
-        data_ritocco = {
+    col_l, col_r = st.columns([1.5, 2.5], gap="large")
+    
+    with col_l:
+        st.markdown("### 1️⃣ Carica il capo")
+        uploaded_file = st.file_uploader("Carica la foto del capo:", type=["jpg", "png", "jpeg"], key="foto_studio")
+        if uploaded_file:
+            input_image = Image.open(uploaded_file)
+            st.image(input_image, caption="Foto Originale", use_container_width=True)
+            
+    with col_r:
+        if uploaded_file:
+            if st.button("✨ Elabora (Rimuovi Sfondo + Stira)"):
+                with st.spinner("Elaborazione AI in corso..."):
+                    img_array = np.array(input_image)
+                    img_removed = remove(img_array)
+                    img_cv = cv2.cvtColor(img_removed, cv2.COLOR_RGBA2BGRA)
+                    smoothed = cv2.bilateralFilter(img_cv, 15, 75, 75)
+                    result_img = Image.fromarray(cv2.cvtColor(smoothed, cv2.COLOR_BGRA2RGBA))
+                    st.image(result_img, caption="Risultato Elaborato", use_container_width=True)
+                    buf = io.BytesIO()
+                    result_img.save(buf, format="PNG")
+                    st.download_button("📥 Scarica Foto Catalogo", buf.getvalue(), "capo_ottimizzato.png", "image/png")
+        
+        st.markdown("### 🛠️ Checklist Post-Produzione")
+        st.table(pd.DataFrame({
             "Parametro": ["Esposizione", "Contrasto", "Saturazione", "Nitidezza", "Temp. Colore"],
-            "Valore Consigliato": ["+0.3", "+10", "+5", "+20", "-2 (più freddo)"],
-            "Effetto": ["Sfondo più pulito", "Texture visibile", "Colori fedeli", "Dettagli etichette", "Aspetto professionale"]
-        }
-        st.table(pd.DataFrame(data_ritocco))
-        st.info("💡 Consiglio: Scatta sempre in formato quadrato (1:1) per evitare ritagli indesiderati su Vinted.")
+            "Valore Consigliato": ["+0.3", "+10", "+5", "+20", "-2"],
+            "Effetto": ["Sfondo più pulito", "Texture visibile", "Colori fedeli", "Dettagli etichette", "Aspetto pro"]
+        }))
 
 # ==========================================
 # TAB 2: GENERATORE DESCRIZIONI
@@ -58,29 +68,27 @@ with tab1:
 with tab2:
     st.header("📝 Scrittura Automatica Annunci Vinted")
     col_a, col_b = st.columns(2, gap="large")
+    
     with col_a:
+        st.markdown("### 🖼️ Carica Foto di Supporto")
+        st.file_uploader("Carica foto dettagli (etichetta, difetti):", type=["jpg", "png"], key="foto_annuncio")
+        
         brand = st.text_input("Brand / Marca del capo", placeholder="Es. Nike, Carhartt...")
         tipo_capo = st.text_input("Tipo di articolo", placeholder="Es. Felpa, T-shirt...")
         colore = st.text_input("Colore e dettagli visivi", placeholder="Es. Bianco con stampa...")
-        
-        st.markdown("### 📏 Taglia e Misure")
         taglia = st.selectbox("Taglia ufficiale", ["XS", "S", "M", "L", "XL", "XXL"], index=2)
         vestibilita = st.selectbox("Vestibilità (Fit)", ["Regolare (True to size)", "Oversize / Baggy", "Slim fit"])
         
         col_cm1, col_cm2 = st.columns(2)
-        with col_cm1:
-            cm_ascelle = st.text_input("Ascella - Ascella (cm)")
-        with col_cm2:
-            cm_lunghezza = st.text_input("Lunghezza totale (cm)")
+        cm_ascelle = col_cm1.text_input("Ascella - Ascella (cm)")
+        cm_lunghezza = col_cm2.text_input("Lunghezza totale (cm)")
             
-        st.markdown("### 🎚️ Stato del capo")
         condizioni = st.selectbox("Condizioni del capo", ["Nuovo con cartellino", "Nuovo senza cartellino", "Ottime condizioni", "Buone condizioni"])
         difetti = st.text_input("Note su eventuali difetti", placeholder="Es. Nessuno...")
 
     with col_b:
         st.subheader("📋 Testo Pronto da Copiare")
         stringa_misure = f"• 📐 Misure prese in piano:\n   - Ascella - Ascella: {cm_ascelle} cm\n   - Lunghezza totale: {cm_lunghezza} cm\n" if (cm_ascelle or cm_lunghezza) else ""
-        
         descrizione_generata = f"""🇮🇹 DESCRIZIONE ARTICOLO:
 Vendo splendido/a {tipo_capo} del brand {brand}. Articolo selezionato con cura, lavato e igienizzato.
 
@@ -95,7 +103,7 @@ Spedisco rapidamente entro 24 ore 📦. Disponibile per info in chat! 📲
 ---
 #{brand.replace(' ', '').lower()} #{tipo_capo.replace(' ', '').lower()} #taglia{taglia.lower()} #streetwear #reselling
 """
-        st.text_area("📄 Descrizione dell'annuncio:", descrizione_generata, height=320)
+        st.text_area("📄 Descrizione dell'annuncio:", descrizione_generata, height=400)
 
 # ==========================================
 # TAB 3: CALCOLATORE PREZZI & LOTTI
@@ -140,25 +148,22 @@ with tab4:
     
     with col_t1:
         st.markdown("### 🔥 Trend di Ricerca")
-        tabelle_ricerca = pd.DataFrame({
+        st.dataframe(pd.DataFrame({
             "Posizione": [1, 2, 3, 4, 5],
             "Stile": ["Sneakers Retro", "Giacche Tecniche", "Denim Baggy", "Streetwear Tops", "Varsity Vintage"],
             "Liquidità": ["Molto Alta", "Alta", "Media", "Alta", "Media"]
-        })
-        st.dataframe(tabelle_ricerca, use_container_width=True, hide_index=True)
+        }), use_container_width=True, hide_index=True)
 
     with col_t2:
         st.markdown("### 📈 Nicchie in Forte Crescita")
-        tabelle_nicchie = pd.DataFrame({
+        st.dataframe(pd.DataFrame({
             "Nicchia": ["Band T-shirt", "Calcio 90s/00s", "Colorblock Windbreakers", "Workwear Pants"],
             "Crescita": ["+120%", "+105%", "+90%", "+75%"]
-        })
-        st.dataframe(tabelle_nicchie, use_container_width=True, hide_index=True)
+        }), use_container_width=True, hide_index=True)
         
     st.markdown("---")
     st.markdown("### ⚠️ Guida Sicurezza: Rischio Repliche")
-    tabelle_rischio = pd.DataFrame({
+    st.table(pd.DataFrame({
         "Brand a Rischio": ["High-End Streetwear", "Nike Tech/Sport", "Luxury Brand"],
         "Azione Consigliata": ["Richiedi sempre ricevuta", "Verifica font etichette", "Usa solo autenticazione Vinted"]
-    })
-    st.table(tabelle_rischio)
+    }))
