@@ -4,6 +4,7 @@ import requests
 import io
 import base64
 from PIL import Image
+from rembg import remove  # Libreria per rimuovere lo sfondo gratis senza deformare i loghi
 
 # Configurazione della pagina
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
@@ -22,105 +23,94 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 # ==========================================
-# TAB 1: MANICHINO & STIRATURA REALE GESTITA DA AI
+# TAB 1: MANICHINO REALE E CAMBIO SFONDO AUTOMATICO (CORRETTO)
 # ==========================================
 with tab1:
-    st.header("📸 Stiratura Professionale & Manichino via FLUX AI")
-    st.write("Carica lo scatto originale. L'AI analizzerà la maglietta, ne spianerà le pieghe e la monterà su un manichino da e-commerce.")
+    st.header("📸 Manichino Invisibile & Cambio Sfondo Automatico via AI")
+    st.write("Questo sistema isola la tua maglietta originale (mantenendo il logo intatto) e la posiziona su uno sfondo professionale con effetto manichino.")
 
     col_foto1, col_foto2 = st.columns([1.2, 1.8], gap="large")
     
     with col_foto1:
         st.markdown("### 1️⃣ Carica la tua Foto Reale")
-        foto_originale = st.file_uploader("Trascina qui la foto originale della maglietta (anche con pieghe):", type=["jpg", "jpeg", "png"])
+        foto_originale = st.file_uploader("Trascina qui la foto originale della maglietta (anche su letto o pavimento):", type=["jpg", "jpeg", "png"], key="vinted_uploader")
         
         if foto_originale:
             st.image(foto_originale, caption="Foto originale caricata", width=150)
 
-        st.markdown("### 2️⃣ Aiuta l'AI a riconoscere i dettagli della stampa")
-        brand_capo = st.text_input("Marca (es. Off-White):", value="Off-White")
-        tipo_prodotto = st.text_input("Tipo di capo (es. T-shirt):", value="T-shirt")
-        
-        st.markdown("##### 🎯 Descrizione del Logo (Essenziale per non farlo rovinare)")
-        descrizione_stampa = st.text_area(
-            "Descrivi la stampa:", 
-            value="Big red arrows graphic pattern on the back, filled with red lips texture design"
-        )
-        
-        st.markdown("### 3️⃣ Scegli il Supporto da Catalogo")
-        tipo_esposizione = st.selectbox(
-            "Seleziona l'effetto desiderato:",
+        st.markdown("### 2️⃣ Personalizza l'Ambiente")
+        tipo_sfondo_scelto = st.selectbox(
+            "Seleziona lo sfondo dello studio fotografico:",
             [
-                "Invisible ghost mannequin, perfectly ironed fabric, flat smooth texture, no wrinkles",
-                "Worn by a professional streetwear male model, lookbook catalog pose, perfectly ironed",
-                "Hanging cleanly on a premium luxury wooden hanger, sleek and smooth garment"
+                "Studio grigio minimalista, luce morbida da catalogo",
+                "Showroom di lusso sfocato, luci calde",
+                "Sfondo bianco puro e-commerce"
             ]
         )
-        
-        tipo_sfondo = st.selectbox(
-            "Seleziona l'ambiente dello studio:",
-            [
-                "Clean photography studio background, neutral soft grey color, professional lighting",
-                "Luxury fashion showroom boutique with warm soft lighting",
-                "Minimalist bright white background for e-commerce website catalog"
-            ]
-        )
-
-        # Questo slider dice all'AI quanta libertà ha. 
-        # Più è basso, più stira e pulisce lo sfondo; più è alto, più tiene la foto simile all'originale sul letto.
-        forza_ai = st.slider("Livello di Stiratura / Modifica AI (Strength):", 0.30, 0.70, 0.50, step=0.05,
-                             help="0.30 mantiene la maglietta identica ma cambia poco lo sfondo. 0.70 stira tutto e monta sul manichino, ma potrebbe alterare i dettagli minimi.")
 
     with col_foto2:
-        st.markdown("### 4️⃣ Risultato Elaborato dall'Intelligenza Artificiale")
+        st.markdown("### 3️⃣ Risultato Elaborato")
         
         if foto_originale is not None:
-            if st.button("✨ Fai Stirare e Montare all'AI", type="primary"):
-                with st.spinner("L'AI sta rimuovendo le pieghe e posizionando il capo sul manichino..."):
+            if st.button("✨ Genera Foto Catalogo", type="primary"):
+                with st.spinner("Isolamento della maglietta e rimozione sfondo in corso..."):
                     try:
-                        # Codifica l'immagine in Base64 per inviarla al motore di Inpainting FLUX
-                        bytes_data = foto_originale.getvalue()
-                        base64_image = base64.b64encode(bytes_data).decode("utf-8")
-                        data_url = f"data:image/jpeg;base64,{base64_image}"
+                        # 1. RIMOZIONE SFONDO AUTOMATICA E GRATUITA (Mantiene il logo perfetto!)
+                        input_image = Image.open(foto_originale)
+                        output_image = remove(input_image) # La maglietta ora è isolata su sfondo trasparente
                         
-                        # Costruiamo il prompt per convincere l'AI a stirare e usare il manichino
-                        prompt_str = (
-                            f"Professional high-end e-commerce product photography of the exact {brand_capo.lower()} {tipo_prodotto.lower()} from the source image. "
-                            f"{tipo_esposizione}. {tipo_sfondo}. "
-                            f"The t-shirt must be perfectly ironed, 100% smooth fabric with zero wrinkles, pristine condition. "
-                            f"Maintain the identical print and graphic shapes: {descrizione_stampa.lower()}. "
-                            f"Photorealistic, crisp clean details, sharp focus, 8k catalog look."
-                        ).replace(" ", "%20")
-                        
-                        # Chiamata API al server FLUX con invio dell'immagine originale
-                        api_url = f"https://image.pollinations.ai/p/{prompt_str}?width=1080&height=1080&nologo=true&model=flux&seed=42"
-                        payload = {
-                            "image": data_url,
-                            "strength": forza_ai
+                        # 2. GENERAZIONE DELLO SFONDO IDEALE CON POLLINATIONS AI
+                        prompt_mappa = {
+                            "Studio grigio minimalista, luce morbida da catalogo": "Professional product photography background, empty ghost mannequin template torso, neutral soft grey photography studio background, high-end look, 8k",
+                            "Showroom di lusso sfocato, luci calde": "Luxury fashion boutique clothing store blurred background, elegant hanger display stand area, warm cinematic lighting",
+                            "Sfondo bianco puro e-commerce": "Clean minimalist bright solid white background for e-commerce catalog, studio lighting, sharp focus"
                         }
                         
-                        response = requests.post(api_url, json=payload, timeout=45)
+                        prompt_sfondo = prompt_mappa[tipo_sfondo_scelto].replace(" ", "%20")
+                        sfondo_url = f"https://image.pollinations.ai/p/{prompt_sfondo}?width=1080&height=1080&nologo=true&model=flux&seed=42"
                         
-                        if response.status_code == 200:
-                            image_res = Image.open(io.BytesIO(response.content))
-                            st.image(image_res, caption="Foto finale stirata dall'AI", use_container_width=True)
+                        response_sfondo = requests.get(sfondo_url, timeout=30)
+                        
+                        if response_sfondo.status_code == 200:
+                            sfondo_ai = Image.open(io.BytesIO(response_sfondo.content)).resize((1080, 1080))
                             
-                            # Preparazione file per il download
+                            # 3. COMBINIAMO LA TUA MAGLIETTA SOPRA LO SFONDO AI
+                            # Convertiamo in RGBA per gestire la trasparenza
+                            maglietta_ritagliata = output_image.convert("RGBA")
+                            
+                            # Ridimensioniamo proporzionalmente la maglietta per farla stare bene nel quadro
+                            maglietta_ritagliata.thumbnail((750, 750), Image.Resampling.LANCZOS)
+                            
+                            # Creiamo un livello trasparente per centrare la maglietta sullo sfondo
+                            livello_maglietta = Image.new("RGBA", (1080, 1080), (0, 0, 0, 0))
+                            pos_x = (1080 - maglietta_ritagliata.width) // 2
+                            pos_y = (1080 - maglietta_ritagliata.height) // 2
+                            livello_maglietta.paste(maglietta_ritagliata, (pos_x, pos_y))
+                            
+                            # Uniamo lo sfondo generato dall'AI e il ritaglio della maglietta originale
+                            foto_finale = Image.alpha_composite(sfondo_ai.convert("RGBA"), livello_maglietta).convert("RGB")
+                            
+                            # Mostriamo il risultato finale a schermo
+                            st.image(foto_finale, caption="Ecco il tuo capo su sfondo professionale", use_container_width=True)
+                            
+                            # Bottone per scaricare il file pronto
                             buffer = io.BytesIO()
-                            image_res.save(buffer, format="JPEG", quality=95)
+                            foto_finale.save(buffer, format="JPEG", quality=95)
                             st.download_button(
-                                label="📥 Scarica Foto Catalogo Finita",
+                                label="📥 Scarica Foto Finita",
                                 data=buffer.getvalue(),
-                                file_name="vinted_ai_mannequin_stirato.jpg",
+                                file_name="vinted_mannequin_perfect.jpg",
                                 mime="image/jpeg"
                             )
-                            st.success("L'AI ha completato l'elaborazione! Se noti che il logo si deforma, abbassa il 'Livello di Stiratura AI' a 0.40 o 0.35 e riprova.")
+                            st.success("Fatto! Il logo e la maglietta sono reali al 100%, ma lo sfondo e l'effetto catalogo sono stati ricreati dall'AI!")
                         else:
-                            st.error("Il server AI è congestionato in questo momento. Attendi qualche istante e clicca nuovamente.")
+                            st.error("Il server AI è congestionato. Attendi un istante e riprova.")
+                            
                     except Exception as e:
-                        st.error(f"Errore di connessione con il motore grafico AI: {e}")
+                        st.error(f"Errore di connessione o elaborazione: {e}")
         else:
-            st.info("💡 Carica lo scatto originale a sinistra, descrivi il logo e premi il pulsante per far fare tutto all'AI.")
+            st.info("💡 Carica lo scatto originale a sinistra e premi il pulsante per far fare tutto al sistema.")
+
 
 # ==========================================
 # TAB 2: GENERATORE DESCRIZIONI AI
@@ -155,8 +145,8 @@ with tab2:
         stringa_misure = ""
         if cm_ascelle or cm_lunghezza:
             stringa_misure = "• 📐 Misure prese in piano:\n"
-            if cm_ascelle: stringa_misure += f"   - Ascella - Ascella: {cm_ascelle} cm\n"
-            if cm_lunghezza: stringa_misure += f"   - Lunghezza totale: {cm_lunghezza} cm\n"
+            if cm_ascelle: stringa_misure += f"    - Ascella - Ascella: {cm_ascelle} cm\n"
+            if cm_lunghezza: stringa_misure += f"    - Lunghezza totale: {cm_lunghezza} cm\n"
 
         brand_tag = brand.replace(' ', '').lower() if brand else "brand"
         tipo_tag = tipo_capo.replace(' ', '').lower() if tipo_capo else "capo"
@@ -177,6 +167,7 @@ Spedisco rapidamente entro 24 ore 📦. Disponibile per info in chat! 📲
 """
         st.text_input("📌 Titolo dell'annuncio:", titolo_generato)
         st.text_area("📄 Descrizione dell'annuncio:", descrizione_generata, height=320)
+
 
 # ==========================================
 # TAB 3: CALCOLATORE PREZZI & LOTTI
@@ -213,6 +204,7 @@ with tab3:
             "Stato Profitto": ["Massimo" if guadagno_netto > 0 else "Nessuno", "Ridotto" if guadagno_lotto > 0 else "Nessuno"]
         }
         st.table(pd.DataFrame(data_tabella))
+
 
 # ==========================================
 # TAB 4: TREND & RICERCA RAPIDA
