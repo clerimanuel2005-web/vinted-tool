@@ -3,9 +3,10 @@ import pandas as pd
 import requests
 import io
 import altair as alt
-from PIL import Image, ImageOps, ImageEnhance
+import base64
+from PIL import Image
 
-# Configurazione globale della pagina in modalità Wide
+# Configurazione della pagina
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
 
 st.title("🛍️ Vinted Power Seller Suite")
@@ -15,89 +16,119 @@ st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
 # CREAZIONE DELLE 4 SCHEDE DI GESTIONE
 # ==========================================
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📸 Studio Fotografico Pro", 
+    "📸 Manichino & Sfondi AI Multi-Scelta", 
     "📝 Generatore Descrizioni AI", 
     "💰 Calcolatore Prezzi & Lotti", 
     "📊 Trend & Ricerca Rapida"
 ])
 
 # ==========================================
-# TAB 1: STUDIO FOTOGRAFICO (LOGO PROTETTO AL 100%)
+# TAB 1: GENERATORE MULTI-OPZIONE AI
 # ==========================================
 with tab1:
-    st.header("📸 Studio Fotografico Professionale (Fedeltà 100%)")
-    st.write("Per evitare che l'AI deformi o inventi i loghi e le grafiche del tuo capo, usa questo editor integrato per ottimizzare lo scatto originale e posizionarlo nei contesti di vendita più caldi.")
+    st.header("📸 Studio Fotografico AI Avanzato: Scegli il tuo Risultato")
+    st.write("Carica la foto reale del capo. L'AI elaborerà le varianti e potrai selezionare la foto professionale migliore da salvare.")
 
-    col_foto1, col_foto2 = st.columns(2, gap="large")
+    col_foto1, col_foto2 = st.columns([1.2, 1.8], gap="large")
     
     with col_foto1:
         st.markdown("### 1️⃣ Carica la tua Foto Reale")
-        foto_originale = st.file_uploader("Trascina qui la foto scattata da te (il logo rimarrà perfetto):", type=["jpg", "jpeg", "png"])
+        foto_originale = st.file_uploader("Carica lo scatto originale (es. la maglietta sul letto):", type=["jpg", "jpeg", "png"])
         
-        st.markdown("### 🛠️ Rimozione Sfondo Garantita")
-        st.warning("⚠️ Nota tecnica: I generatori d'immagini integrati tendono a distruggere i loghi delle marche. Per un risultato perfetto senza sbavature, rimuovi prima lo sfondo con uno di questi tool gratuiti e ricarica qui la maglietta ritagliata:")
-        st.link_button("✂️ Rimuovi Sfondo Gratis (Adobe Express)", "https://www.adobe.com/express/feature/image/remove-background", use_container_width=True)
-        st.link_button("✨ Rimuovi Sfondo Gratis (Photoroom Web)", "https://www.photoroom.com/tools/background-remover", use_container_width=True)
+        if foto_originale:
+            st.image(foto_originale, caption="Foto originale caricata con successo", width=150)
 
-        st.markdown("### 2️⃣ Regolazioni Luce e Colore")
-        luminosita = st.slider("Luminosità immagine (Migliora i dettagli al buio):", 0.5, 2.0, 1.0, step=0.1)
-        contrasto = st.slider("Contrasto (Metti in risalto la grafica):", 0.5, 2.0, 1.0, step=0.1)
-        specchia = st.checkbox("Specchia l'immagine orizzontalmente")
+        st.markdown("### 2️⃣ Dettagli dell'Articolo")
+        brand_capo = st.text_input("Marca del capo:", value="", placeholder="Es. Off-White, Nike, Jordan...")
+        tipo_prodotto = st.text_input("Tipo di capo:", value="", placeholder="Es. t-shirt, felpa con cappuccio...")
+        
+        st.markdown("### ⚙️ Parametri di Controllo AI")
+        conservazione = st.slider("Mantenimento Grafica Originale:", 0.60, 0.90, 0.80, step=0.05, 
+                                  help="Valori alti costringono l'AI a non toccare il logo originale.")
 
     with col_foto2:
-        st.markdown("### 3️⃣ Anteprima di Vendita Ottimizzata")
+        st.markdown("### 3️⃣ Genera e Scegli la tua Variante Preferita")
         
         if foto_originale is not None:
-            try:
-                # Carica l'immagine originale dell'utente garantendo la protezione totale del logo
-                img = Image.open(foto_originale).convert("RGB")
-                
-                # Applicazione dei filtri professionali per renderla da catalogo
-                if specchia:
-                    img = ImageOps.mirror(img)
-                
-                if luminosita != 1.0:
-                    enhancer = ImageEnhance.Brightness(img)
-                    img = enhancer.enhance(luminosita)
-                    
-                if contrasto != 1.0:
-                    enhancer = ImageEnhance.Contrast(img)
-                    img = enhancer.enhance(contrasto)
-                
-                # Mostra l'immagine reale, pulita e valorizzata, pronta per Vinted
-                st.image(img, caption="Tuo capo reale ottimizzato (Nessun logo alterato)", use_container_width=True)
-                
-                # Download dell'immagine finale ad alta qualità
-                buffer = io.BytesIO()
-                img.save(buffer, format="JPEG", quality=95)
-                st.download_button(
-                    label="📥 Scarica Foto Pronta per Vinted",
-                    data=buffer.getvalue(),
-                    file_name="vinted_catalogo_perfetto.jpg",
-                    mime="image/jpeg"
-                )
-                st.success("Foto elaborata! Ora il tuo logo è sicuro al 100% ed è pronto per la vendita.")
-            except Exception as e:
-                st.error(f"Errore durante l'apertura del file: {e}")
+            # Creiamo i 3 stili pronti per essere scelti dall'utente
+            stili_disponibili = {
+                "Opzione 1: Manichino Invisibile (Showroom)": {
+                    "supporto": "placed on an invisible ghost mannequin, perfectly ironed, high-end look",
+                    "sfondo": "inside a luxury fashion showroom boutique with soft ambient light, premium minimalism"
+                },
+                "Opzione 2: Modello Streetwear (Studio)": {
+                    "supporto": "worn by a professional streetwear male model, lookbook catalog pose",
+                    "sfondo": "clean photography studio background, neutral grey tone, cinematic lighting"
+                },
+                "Opzione 3: Appeso Urban Style (Strada)": {
+                    "supporto": "hanging cleanly on a premium minimalist wooden hanger",
+                    "sfondo": "industrial urban street background, blurred city architecture, London style"
+                }
+            }
+            
+            # Selezione della variante tramite tab interne o pulsanti dedicati
+            scelta_variante = st.radio("Scegli quale configurazione AI vuoi generare/visualizzare:", list(stili_disponibili.keys()))
+            
+            if st.button("✨ Elabora Variante Selezionata con AI", type="primary"):
+                with st.spinner("L'AI sta modellando il capo sul supporto scelto... Attendi qualche secondo."):
+                    try:
+                        # Codifica l'immagine in Base64 per passarla al motore grafico
+                        bytes_data = foto_originale.getvalue()
+                        base64_image = base64.b64encode(bytes_data).decode("utf-8")
+                        data_url = f"data:image/jpeg;base64,{base64_image}"
+                        
+                        # Recupero dei dati dello stile scelto
+                        stile_selezionato = stili_disponibili[scelta_variante]
+                        
+                        # Costruzione del prompt combinato strutturale
+                        prompt_str = (
+                            f"Commercial clean lookbook product photography of the exact {brand_capo.lower()} {tipo_prodotto.lower()} from the source image. "
+                            f"{stile_selezionato['supporto']}. {stile_selezionato['sfondo']}. "
+                            f"Keep the exact colors, logo shapes, text elements and red graphic pattern details identical to the source image. "
+                            f"Photorealistic, 8k, highly detailed garment structure."
+                        ).replace(" ", "%20")
+                        
+                        # Chiamata API Img2Img dedicata
+                        api_url = f"https://image.pollinations.ai/p/{prompt_str}?width=1080&height=1080&nologo=true&seed=42"
+                        payload = {"image": data_url, "strength": conservazione}
+                        
+                        response = requests.post(api_url, json=payload, timeout=40)
+                        
+                        if response.status_code == 200:
+                            image_res = Image.open(io.BytesIO(response.content))
+                            st.image(image_res, caption=f"Anteprima Risultato: {scelta_variante}", use_container_width=True)
+                            
+                            # Preparazione file per scaricarlo
+                            buffer = io.BytesIO()
+                            image_res.save(buffer, format="JPEG", quality=95)
+                            st.download_button(
+                                label="📥 Scarica questa foto per il tuo annuncio",
+                                data=buffer.getvalue(),
+                                file_name="vinted_mockup_scelto.jpg",
+                                mime="image/jpeg"
+                            )
+                            st.success("Variante generata! Se non ti soddisfa, seleziona un'altra Opzione sopra e clicca di nuovo il pulsante.")
+                        else:
+                            st.error("Il server AI è momentaneamente saturo. Attendi 5 secondi e clicca di nuovo.")
+                    except Exception as e:
+                        st.error(f"Errore tecnico nella comunicazione AI: {e}")
         else:
-            st.info("💡 Carica la foto a sinistra per applicare i filtri di luce da catalogo e preparare il download.")
+            st.info("💡 Per iniziare a generare le opzioni grafiche su manichino o modello, trascina la tua foto originale nel riquadro di sinistra.")
 
 # ==========================================
-# TAB 2: GENERATORE DESCRIZIONI AI (VUOTO COMPLETO)
+# TAB 2: GENERATORE DESCRIZIONI AI
 # ==========================================
 with tab2:
     st.header("📝 Scrittura Automatica Annunci Vinted")
-    st.write("Inserisci i dati del tuo articolo per generare istantaneamente il testo ottimizzato pronto da copiare.")
-
     col_a, col_b = st.columns(2, gap="large")
     with col_a:
         brand = st.text_input("Brand / Marca del capo", value="", placeholder="Inserisci la marca...")
-        tipo_capo = st.text_input("Tipo di articolo", value="", placeholder="Es. Felpa, T-shirt, Pantaloni...")
-        colore = st.text_input("Colore e dettagli visivi", value="", placeholder="Es. Nero con dettagli ricamati...")
+        tipo_capo = st.text_input("Tipo di articolo", value="", placeholder="Es. Felpa, T-shirt...")
+        colore = st.text_input("Colore e dettagli visivi", value="", placeholder="Es. Bianco con grafica...")
         
         st.markdown("### 📏 Taglia e Misure")
         taglia = st.selectbox("Taglia ufficiale", ["XS", "S", "M", "L", "XL", "XXL"], index=2)
-        vestibilita = st.selectbox("Vestibilità (Fit)", ["Regolare (True to size)", "Oversize / Baggy", "Slim fit / Stretto"])
+        vestibilita = st.selectbox("Vestibilità (Fit)", ["Regolare (True to size)", "Oversize / Baggy", "Slim fit"])
         
         col_cm1, col_cm2 = st.columns(2)
         with col_cm1:
@@ -106,14 +137,13 @@ with tab2:
             cm_lunghezza = st.text_input("Lunghezza totale (cm)", value="", placeholder="Es. 70")
             
         st.markdown("### 🎚️ Stato del capo")
-        condizioni = st.selectbox("Condizioni del capo", ["Nuovo con cartellino", "Nuovo senza cartellino", "Ottime condizioni (indossato pochissimo)", "Buone condizioni"])
-        difetti = st.text_input("Note su eventuali difetti", value="", placeholder="Es. nessuno, oppure descrivi difetto...")
+        condizioni = st.selectbox("Condizioni del capo", ["Nuovo con cartellino", "Nuovo senza cartellino", "Ottime condizioni", "Buone condizioni"])
+        difetti = st.text_input("Note su eventuali difetti", value="", placeholder="Es. nessuno, oppure descrivi...")
 
     with col_b:
         st.subheader("📋 Testo Pronto da Copiare")
-        
         titolo_generato = f"✨ {tipo_capo.capitalize()} {brand.upper()} - Taglia {taglia}" if tipo_capo or brand else ""
-        nota_difetti = f"• 🔎 Difetti: {difetti.capitalize()}" if difetti else "• 🔎 Difetti: Nessuno, capo in condizioni perfette."
+        nota_difetti = f"• 🔎 Difetti: {difetti.capitalize()}" if difetti else "• 🔎 Difetti: Nessuno, capo perfetto."
         
         stringa_misure = ""
         if cm_ascelle or cm_lunghezza:
@@ -125,7 +155,7 @@ with tab2:
         tipo_tag = tipo_capo.replace(' ', '').lower() if tipo_capo else "capo"
 
         descrizione_generata = f"""🇮🇹 DESCRIZIONE ARTICOLO:
-Vendo splendida {tipo_capo.lower() if tipo_capo else 'maglia'} originale del brand {brand.capitalize() if brand else '-'}. Il capo è stato trattato con cura, lavato, igienizzato e conservato con attenzione.
+Vendo splendida {tipo_capo.lower() if tipo_capo else 'maglia'} originale del brand {brand.capitalize() if brand else '-'}. Il capo è stato trattato con cura, lavato e igienizzato.
 
 • 🎨 Colore/Dettagli: {colore.capitalize() if colore else '-'}
 • 📏 Taglia: {taglia}
@@ -133,22 +163,19 @@ Vendo splendida {tipo_capo.lower() if tipo_capo else 'maglia'} originale del bra
 {stringa_misure}• 💎 Condizioni: {condizioni}
 {nota_difetti}
 
-Spedisco rapidamente entro 24 ore dal pagamento 📦. Sono a completa disposizione per qualsiasi domanda o foto aggiuntiva in chat! 📲
+Spedisco rapidamente entro 24 ore 📦. Disponibile per info in chat! 📲
 
 ---
-Tag per visibilità:
-#{brand_tag} #{tipo_tag} #taglia{taglia.lower()} #streetwear #vintage #reselling #vinteditalia
+# {brand_tag} #{tipo_tag} #taglia{taglia.lower()} #streetwear #reselling
 """
         st.text_input("📌 Titolo dell'annuncio:", titolo_generato)
-        st.text_area("📄 Descrizione dell'annuncio (Copia e Incolla):", descrizione_generata, height=320)
+        st.text_area("📄 Descrizione dell'annuncio:", descrizione_generata, height=320)
 
 # ==========================================
-# TAB 3: CALCOLATORE PREZZI & LOTTI (TABELLE E METRICHE COMPLETE)
+# TAB 3: CALCOLATORE PREZZI & LOTTI
 # ==========================================
 with tab3:
     st.header("💰 Controllo Margini e Analisi del Profitto")
-    st.write("Inserisci i tuoi costi reali per popolare i grafici e calcolare la sostenibilità dei lotti.")
-
     col_input, col_chart = st.columns([1.5, 2.5], gap="large")
 
     with col_input:
@@ -171,7 +198,6 @@ with tab3:
             st.metric(label="📈 ROI %", value=f"{roi:.1f}%")
 
         st.markdown("---")
-        
         st.markdown("##### 📊 Tabella dei Margini Simulati")
         data_tabella = {
             "Scenario di Vendita": ["Vendita Singola Standard", f"Vendita in Lotto (Sconto {percentuale_sconto}%)"],
@@ -180,25 +206,12 @@ with tab3:
             "Stato Profitto": ["Massimo" if guadagno_netto > 0 else "Nessuno", "Ridotto" if guadagno_lotto > 0 else "Nessuno"]
         }
         st.table(pd.DataFrame(data_tabella))
-        
-        if prezzo_vendita > 0:
-            data_fin = pd.DataFrame({
-                'Categoria': ['Spesa Iniziale', 'Profitto Netto'], 
-                'Valore': [costo_acquisto, max(0.0, guadagno_netto)]
-            })
-            base = alt.Chart(data_fin).encode(theta=alt.Theta("Valore", stack=True))
-            donut = base.mark_arc(innerRadius=45, outerRadius=80).encode(
-                color=alt.Color("Category", scale=alt.Scale(range=['#E5E7EB', '#10B981']), legend=alt.Legend(orient="bottom"))
-            ).properties(height=150)
-            st.altair_chart(donut, use_container_width=True)
 
 # ==========================================
-# TAB 4: TREND & RICERCA RAPIDA (COMPLETO)
+# TAB 4: TREND & RICERCA RAPIDA
 # ==========================================
 with tab4:
     st.header("📊 I Trend di Mercato Caldi & Analisi Nicchie")
-    st.write("Strumenti e tabelle di ricerca per analizzare i volumi e i prezzi medi di mercato in tempo reale.")
-
     col_t1, col_t2 = st.columns(2, gap="medium")
     
     with col_t1:
@@ -218,21 +231,3 @@ with tab4:
             "Tasso di Crescita": ["+120%", "+105%", "+90%", "+75%"]
         })
         st.dataframe(tabelle_nicchie, use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-    st.markdown("### 💰 Stima Prezzi Medi di Rivendita")
-    
-    tabelle_prezzi = pd.DataFrame({
-        "Categoria Articolo": ["Felpe di Brand Streetwear Premium", "Giacche Tecniche e Windbreaker Outdoor", "T-shirt Vintage Grafiche", "Pantaloni Cargo / Workwear"],
-        "Prezzo Medio su Vinted (€)": ["60€ - 120€", "50€ - 110€", "20€ - 45€", "30€ - 65€"],
-        "Velocità di Vendita stimata": ["Molto Rapida (1-3 gg)", "Rapida (3-7 gg)", "Media (7-10 gg)", "Rapida (2-5 gg)"]
-    })
-    st.dataframe(tabelle_prezzi, use_container_width=True, hide_index=True)
-    st.markdown("---")
-    
-    st.markdown("### 🔀 Scorciatoie e Link di Ricerca Rapida")
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        st.link_button("👟 Cerca Ultimi Arrivi Sneakers su Vinted", "https://www.vinted.it/catalog?order=newest_first", use_container_width=True)
-    with col_btn2:
-        st.link_button("🧥 Cerca Abbigliamento Vintage / Streetwear", "https://www.vinted.it/catalog?order=newest_first", use_container_width=True)
