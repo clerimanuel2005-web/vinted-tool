@@ -26,7 +26,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 # ==========================================
-# TAB 1: STUDIO FOTOGRAFICO (Elaborazione Locale)
+# TAB 1: STUDIO FOTOGRAFICO (Elaborazione Locale Corretta)
 # ==========================================
 with tab1:
     st.header("📸 Studio Fotografico: AI Processing Locale")
@@ -45,12 +45,25 @@ with tab1:
         if uploaded_file:
             if st.button("✨ Elabora (Rimuovi Sfondo + Stira)"):
                 with st.spinner("Elaborazione AI in corso..."):
+                    # Conversione per elaborazione
                     img_array = np.array(input_image)
                     img_removed = remove(img_array)
-                    img_cv = cv2.cvtColor(img_removed, cv2.COLOR_RGBA2BGRA)
-                    smoothed = cv2.bilateralFilter(img_cv, 15, 75, 75)
-                    result_img = Image.fromarray(cv2.cvtColor(smoothed, cv2.COLOR_BGRA2RGBA))
+                    
+                    # Logica corretta per OpenCV (Gestione canali Alpha)
+                    img_bgra = cv2.cvtColor(img_removed, cv2.COLOR_RGBA2BGRA)
+                    img_bgr = cv2.cvtColor(img_bgra, cv2.COLOR_BGRA2BGR)
+                    
+                    # Filtro "Stira"
+                    smoothed = cv2.bilateralFilter(img_bgr, 15, 75, 75)
+                    
+                    # Riunione canali
+                    b, g, r = cv2.split(smoothed)
+                    _, _, _, alpha = cv2.split(img_bgra)
+                    final_processed = cv2.merge([b, g, r, alpha])
+                    
+                    result_img = Image.fromarray(cv2.cvtColor(final_processed, cv2.COLOR_BGRA2RGBA))
                     st.image(result_img, caption="Risultato Elaborato", use_container_width=True)
+                    
                     buf = io.BytesIO()
                     result_img.save(buf, format="PNG")
                     st.download_button("📥 Scarica Foto Catalogo", buf.getvalue(), "capo_ottimizzato.png", "image/png")
@@ -73,9 +86,9 @@ with tab2:
         st.markdown("### 🖼️ Carica Foto di Supporto")
         st.file_uploader("Carica foto dettagli (etichetta, difetti):", type=["jpg", "png"], key="foto_annuncio")
         
-        brand = st.text_input("Brand / Marca del capo", placeholder="Es. Nike, Carhartt...")
-        tipo_capo = st.text_input("Tipo di articolo", placeholder="Es. Felpa, T-shirt...")
-        colore = st.text_input("Colore e dettagli visivi", placeholder="Es. Bianco con stampa...")
+        brand = st.text_input("Brand / Marca del capo")
+        tipo_capo = st.text_input("Tipo di articolo")
+        colore = st.text_input("Colore e dettagli visivi")
         taglia = st.selectbox("Taglia ufficiale", ["XS", "S", "M", "L", "XL", "XXL"], index=2)
         vestibilita = st.selectbox("Vestibilità (Fit)", ["Regolare (True to size)", "Oversize / Baggy", "Slim fit"])
         
@@ -84,13 +97,13 @@ with tab2:
         cm_lunghezza = col_cm2.text_input("Lunghezza totale (cm)")
             
         condizioni = st.selectbox("Condizioni del capo", ["Nuovo con cartellino", "Nuovo senza cartellino", "Ottime condizioni", "Buone condizioni"])
-        difetti = st.text_input("Note su eventuali difetti", placeholder="Es. Nessuno...")
+        difetti = st.text_input("Note su eventuali difetti")
 
     with col_b:
         st.subheader("📋 Testo Pronto da Copiare")
         stringa_misure = f"• 📐 Misure prese in piano:\n   - Ascella - Ascella: {cm_ascelle} cm\n   - Lunghezza totale: {cm_lunghezza} cm\n" if (cm_ascelle or cm_lunghezza) else ""
         descrizione_generata = f"""🇮🇹 DESCRIZIONE ARTICOLO:
-Vendo splendido/a {tipo_capo} del brand {brand}. Articolo selezionato con cura, lavato e igienizzato.
+Vendo splendido/a {tipo_capo} del brand {brand}.
 
 • 🎨 Colore/Dettagli: {colore}
 • 📏 Taglia: {taglia}
