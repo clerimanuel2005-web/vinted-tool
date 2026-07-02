@@ -1,133 +1,167 @@
 import streamlit as st
 import pandas as pd
+import requests
+from PIL import Image, ImageEnhance
+import io
 
 # Configurazione della pagina
-st.set_page_config(page_title="Clothes Ironing AI v2", page_icon="👚", layout="wide")
+st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
 
-st.title("👚 Clothes Ironing AI - Studio Professionale")
-st.write("Raddrizza il tessuto, rimuovi le pieghe e pulisci lo sfondo dei tuoi capi in tempo reale.")
+st.title("🛍️ Vinted Power Seller Suite")
+st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
 
-# Creazione delle schede
-tab1, tab2 = st.tabs(["✨ Clothes Ironing AI", "📊 Trend di Vendita del Mese"])
+# Inserisci qui la tua chiave API presa da Clipdrop
+CLIPDROP_API_KEY = "INSERISCI_QUI_LA_TUA_API_KEY"
+
+# Creazione delle 4 Schede di Gestione
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📸 Clothes Ironing AI", 
+    "📝 Generatore Descrizioni AI", 
+    "💰 Calcolatore Prezzi & Lotti", 
+    "📊 Trend del Mese"
+])
 
 # ==========================================
-# TAB 1: CLOTHES IRONING AI (STUDIO DIGITALE)
+# TAB 1: CLOTHES IRONING AI
 # ==========================================
 with tab1:
     st.header("Studio di Stiratura e Sfondo Digitale")
-    st.write("Carica la tua foto. Il tool isolerà la maglietta portandola in primo piano e applicherà un filtro di smoothing avanzato per attenuare drasticamente le pieghe del tessuto.")
+    uploaded_file = st.file_uploader("Scegli la foto del vestito...", type=["jpg", "jpeg", "png"])
 
-    # Inseriamo un componente HTML/JS personalizzato per gestire l'immagine a livello professionale
-    # Questo script applica un algoritmo di mascheratura dei canali e sfocatura selettiva (Bilatereal Filter)
-    # per spianare le pieghe lasciando intatta la stampa (il logo Off-White con i baci).
-    st.components.v1.html(
-        """
-        <div style="font-family: sans-serif; background: #f9f9f9; padding: 20px; border-radius: 10px; border: 1px solid #ddd;">
-            <input type="file" id="upload" accept="image/*" style="margin-bottom: 20px; font-size: 16px;"><br>
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                <div>
-                    <p><b>Foto Originale:</b></p>
-                    <img id="source" style="max-width: 100%; max-height: 400px; border-radius: 5px; display: none;">
-                    <canvas id="canvasIn" style="max-width: 100%; max-height: 400px; border-radius: 5px; background: #eee;"></canvas>
-                </div>
-                <div>
-                    <p><b>Risultato Clothes Ironing (Sfondo Bianco + Tessuto Lisciato):</b></p>
-                    <canvas id="canvasOut" style="max-width: 100%; max-height: 400px; border-radius: 5px; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1);"></canvas>
-                </div>
-            </div>
-            <br>
-            <button id="processBtn" style="background: #FF4B4B; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer;">✨ Stira e Pulisci Sfondo</button>
-            <a id="downloadBtn" style="display:none; background: #28a745; color: white; text-decoration: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; margin-left: 10px;">📥 Scarica Foto Perfetta</a>
-        </div>
-
-        <script>
-            const upload = document.getElementById('upload');
-            const canvasIn = document.getElementById('canvasIn');
-            const canvasOut = document.getElementById('canvasOut');
-            const ctxIn = canvasIn.getContext('2d');
-            const ctxOut = canvasOut.getContext('2d');
-            let img = new Image();
-
-            upload.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    img.src = event.target.result;
-                    img.onload = () => {
-                        canvasIn.width = img.width;
-                        canvasIn.height = img.height;
-                        ctxIn.drawImage(img, 0, 0);
-                    }
-                }
-                reader.readAsDataURL(file);
-            });
-
-            document.getElementById('processBtn').addEventListener('click', () => {
-                if(!img.src) return alert("Carica prima un'immagine!");
-                
-                canvasOut.width = img.width;
-                canvasOut.height = img.height;
-                
-                // Ridisegna l'immagine sul canvas di output per elaborarla
-                ctxOut.drawImage(img, 0, 0);
-                let imgData = ctxOut.getImageData(0, 0, canvasOut.width, canvasOut.height);
-                let data = imgData.data;
-
-                // 1. ALGORITMO DI RIMOZIONE DELLO SFONDO LOCALE (Croma e Luminosità)
-                // Identifica gli angoli blu/scuri esterni alla maglietta bianca e li converte in bianco puro
-                for (let i = 0; i < data.length; i += 4) {
-                    let r = data[i];
-                    let g = data[i+1];
-                    let b = data[i+2];
-                    
-                    // Se rileva lo sfondo scuro/bluastro/giallognolo degli angoli (come nella tua foto)
-                    if ((b > r && b > g) || (r < 130 && g < 130 && b < 150)) {
-                        data[i] = 255;   // R
-                        data[i+1] = 255; // G
-                        data[i+2] = 255; // B
-                    }
-                }
-                ctxOut.putImageData(imgData, 0, 0);
-
-                // 2. ALGORITMO DI STIRATURA (Sfocatura selettiva intelligente delle micro-ombre)
-                // Applica un filtro che ammorbidisce i passaggi netti di ombra (le pieghe) 
-                // mantenendo intatti i bordi rossi accesi della stampa a x
-                ctxOut.globalAlpha = 0.4;
-                // Sovrappone una versione leggermente ammorbidita per riempire i solchi delle pieghe
-                ctxOut.drawImage(canvasOut, 1, 1); 
-                ctxOut.drawImage(canvasOut, -1, -1);
-                ctxOut.globalAlpha = 1.0;
-
-                // Correzione finale di esposizione
-                ctxOut.fillStyle = "rgba(255,255,255,0.15)";
-                ctxOut.globalCompositeOperation = "color-dodge";
-                ctxOut.fillRect(0,0,canvasOut.width,canvasOut.height);
-                ctxOut.globalCompositeOperation = "source-over";
-
-                // Attiva il tasto download
-                const downloadBtn = document.getElementById('downloadBtn');
-                downloadBtn.href = canvasOut.toDataURL("image/jpeg", 0.95);
-                downloadBtn.download = "vestito_perfetto.jpg";
-                downloadBtn.style.display = "inline-block";
-            });
-        </script>
-        """,
-        height=580,
-    )
+    if uploaded_file is not None:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("❌ Foto Originale")
+            st.image(uploaded_file, use_container_width=True)
+            
+        with col2:
+            st.subheader("✨ Risultato Professionale")
+            with st.spinner("Elaborazione in corso..."):
+                try:
+                    r = requests.post(
+                        'https://clipdrop-api.co/remove-background/v1',
+                        files={'image_file': (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)},
+                        headers={'x-api-key': CLIPDROP_API_KEY}
+                    )
+                    if r.status_code == 200:
+                        img_no_bg = Image.open(io.BytesIO(r.content))
+                        white_bg = Image.new("RGBA", img_no_bg.size, (255, 255, 255, 255))
+                        white_bg.paste(img_no_bg, (0, 0), img_no_bg)
+                        final_img = white_bg.convert("RGB")
+                        
+                        enhancer = ImageEnhance.Brightness(final_img)
+                        final_img = enhancer.enhance(1.15)
+                        
+                        st.image(final_img, use_container_width=True)
+                        
+                        buffer = io.BytesIO()
+                        final_img.save(buffer, format="JPEG", quality=100)
+                        
+                        st.download_button(
+                            label="📥 Scarica Foto Perfetta",
+                            data=buffer.getvalue(),
+                            file_name="vestito_vinted_ok.jpg",
+                            mime="image/jpeg",
+                            type="primary"
+                        )
+                        st.success("🎉 Foto ottimizzata!")
+                    else:
+                        st.error("Configura l'API Key di Clipdrop per sbloccare il tool.")
+                except Exception as e:
+                    st.error(f"Errore: {e}")
 
 # ==========================================
-# TAB 2: ANALISI TREND & RESELLING
+# TAB 2: GENERATORE DESCRIZIONI AI (NUOVO!)
 # ==========================================
 with tab2:
-    st.header("I Trend di Mercato su Vinted")
-    st.write("Usa questa tabella per capire cosa comprare e rivendere velocemente sul mercato dell'usato.")
+    st.header("📝 Scrittura Automatica Annunci Vinted")
+    st.write("Compila i campi velocemente per generare una descrizione magnetica che attira i compratori e scala l'algoritmo di ricerca.")
 
+    col_a, col_b = st.columns(2)
+    with col_a:
+        brand = st.text_input("Brand / Marca del capo", placeholder="Es. Off-White, Nike, Levi's")
+        tipo_capo = st.text_input("Tipo di articolo", placeholder="Es. T-shirt grafica, Jeans 501, Felpa con cappuccio")
+        colore = st.text_input("Colore principale", placeholder="Es. Bianco, Nero, Vintage Wash")
+        
+        condizioni = st.selectbox("Condizioni del capo", [
+            "Nuovo con cartellino", 
+            "Nuovo senza cartellino", 
+            "Ottime condizioni (indossato pochissimo, nessun difetto)", 
+            "Buone condizioni (normali segni di usura)",
+            "Soddisfacente (presenta piccoli difetti specificati)"
+        ])
+        
+        difetti = st.text_input("Note o piccoli difetti (opzionale)", placeholder="Es. Nessun difetto, micro-segno sulla manica")
+
+    with col_b:
+        st.subheader("📋 Testo Pronto da Copiare")
+        
+        # Generatore di testo logico
+        titolo_generato = f"✨ {tipo_capo.capitalize()} {brand.upper()} - {colore.capitalize()}"
+        
+        nota_difetti = f"• 🔎 Difetti: {difects}" if difetti else "• 🔎 Difetti: Nessuno, capo perfetto."
+        
+        descrizione_generata = f"""🇮🇹 DESCRIZIONE ARTICOLO:
+Vendo bellissima {tipo_capo.lower()} originale del brand {brand.capitalize()}.
+
+• 🎨 Colore: {colore.capitalize()}
+• 📈 Condizioni: {condizioni}
+{nota_difetti}
+• 📏 Taglia: (Verificare misure in DM se necessario)
+
+Spedisco velocemente entro 24 ore dal pagamento 📦. Se hai domande o vuoi fare un'offerta (sensata), scrivimi pure in privato! 📲
+
+---
+Tag per algoritmo:
+#{brand.lower()} #{tipo_capo.replace(' ', '').lower()} #{colore.lower()} #vintedvintage #streetwear #reselling
+"""
+        st.text_input("📌 Titolo dell'annuncio:", titolo_generato)
+        st.text_area("📄 Descrizione dell'annuncio (Copia e Incolla su Vinted):", descrizione_generata, height=320)
+
+# ==========================================
+# TAB 3: CALCOLATORE PREZZI & LOTTI (NUOVO!)
+# ==========================================
+with tab3:
+    st.header("💰 Controllo Margini e Sconti sui Lotti")
+    st.write("Calcola quanto guadagni davvero al netto dei tuoi costi ed imposta una strategia per i lotti di acquirenti multipli.")
+
+    col_x, col_y = st.columns(2)
+    with col_x:
+        prezzo_acquisto = st.number_input("Quanto hai pagato il capo? (€)", min_value=0.0, value=10.0, step=1.0)
+        prezzo_vendita = st.number_input("A quanto vuoi venderlo su Vinted? (€)", min_value=0.0, value=35.0, step=1.0)
+        
+        st.markdown("### 🏬 Simulatore Sconto Pacchetti")
+        percentuale_sconto = st.slider("Se un utente crea un lotto, che sconto vuoi applicare? (%)", 0, 50, 15)
+
+    with col_y:
+        st.subheader("📊 Resoconto Finanziario")
+        
+        # Calcoli matematici semplici per il reselling
+        ricavo_netto = prezzo_vendita - prezzo_acquisto
+        roi = (ricavo_netto / prezzo_acquisto) * 100 if prezzo_acquisto > 0 else 0
+        
+        prezzo_scontato_lotto = prezzo_vendita * (1 - (percentuale_sconto / 100))
+        guadagno_lotto = prezzo_scontato_lotto - prezzo_acquisto
+
+        # Box metriche visive
+        st.metric(label="🤑 Guadagno Netto Singolo", value=f"{ricavo_netto:.2s} €", delta=f"ROI: {roi:.1f}%")
+        
+        st.markdown("---")
+        st.write(f"📉 **Se venduto in un lotto con lo sconto del {percentuale_sconto}%:**")
+        st.write(f"• Prezzo finale al compratore: **{prezzo_scontato_lotto:.2f} €**")
+        st.write(f"• Tuo guadagno pulito sul pezzo: **{guadagno_lotto:.2f} €**")
+        
+        if guadagno_lotto <= 0:
+            st.error("⚠️ Attenzione: Con questo sconto lotto vai in perdita o guadagni 0€!")
+        else:
+            st.success("✅ Margine di guadagno sicuro.")
+
+# ==========================================
+# TAB 4: TREND
+# ==========================================
+with tab4:
+    st.header("I Trend di Mercato su Vinted")
     trend_data = [
-        {"Categoria": "Streetwear", "Brand Più Cercati": "Nike, Adidas, Stüssy, Carhartt", "Prezzo Medio Vendita": "25€ - 60€", "Richiesta su Vinted": "🔥 Altissima", "Velocità di Vendita": "Meno di 48 ore"},
-        {"Categoria": "Y2K / Vintage Anni 2000", "Brand Più Cercati": "Diesel, Von Dutch, Juicy Couture", "Prezzo Medio Vendita": "20€ - 50€", "Richiesta su Vinted": "🔥 Alta", "Velocità di Vendita": "1-3 giorni"},
-        {"Categoria": "Giacche / Outerwear", "Brand Più Cercati": "The North Face, Patagonia, Arc'teryx", "Prezzo Medio Vendita": "50€ - 120€", "Richiesta su Vinted": "🔥 Alta", "Velocità di Vendita": "2-4 giorni"},
-        {"Categoria": "Scarpe & Sneakers", "Brand Più Cercati": "Nike Jordan 1, Adidas Campus, New Balance 550", "Prezzo Medio Vendita": "40€ - 90€", "Richiesta su Vinted": "🔥 Altissima", "Velocità di Vendita": "Meno di 24 ore"}
+        {"Categoria": "Streetwear", "Brand Più Cercati": "Nike, Adidas, Stüssy", "Prezzo Medio Vendita": "25€ - 60€", "Richiesta": "🔥 Altissima"}
     ]
-    
-    df = pd.DataFrame(trend_data)
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(pd.DataFrame(trend_data), use_container_width=True)
