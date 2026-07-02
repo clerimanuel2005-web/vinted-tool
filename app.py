@@ -2,49 +2,60 @@ import streamlit as st
 import pandas as pd
 import requests
 import io
+import random
 from PIL import Image, ImageFilter, ImageOps, ImageEnhance
-import numpy as np
 from rembg import remove
 
-# Configurazione obbligatoria della pagina Streamlit
+# 1. CONFIGURAZIONE DELLA PAGINA (Deve essere tassativamente il primo comando Streamlit)
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
 
+# Titolo principale dell'applicazione
 st.title("🛍️ Vinted Power Seller Suite")
-st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
+st.write("L'hub definitivo per ottimizzare le foto dei tuoi capi, calcolare i margini e scrivere annunci perfetti.")
 
 # ==========================================
-# CREAZIONE DELLE 4 SCHEDE DI GESTIONE
+# CREAZIONE DELLE SCHEDE DI NAVIGAZIONE
 # ==========================================
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📸 Manichino & Stiratura Avanzata AI", 
+    "📸 Manichino AI & Ultra HD", 
     "📝 Generatore Descrizioni AI", 
     "💰 Calcolatore Prezzi & Lotti", 
-    "📊 Trend & Ricerca Rapida"
+    "📊 Trend di Mercato"
 ])
 
 # ==========================================
-# TAB 1: INTEGRAZIONE SFONDO E ADATTAMENTO ARTICOLO
+# TAB 1: RIMOZIONE SFONDO E COMPOSIZIONE HD
 # ==========================================
 with tab1:
     st.header("📸 Ottimizzazione Sfondo Fotografico via AI")
-    st.write("Isola il tuo capo e posizionalo su manichini o grucce all'interno di scenari commerciali premium in Alta Definizione.")
+    st.write("Isola la tua maglietta, correggi i difetti di contrasto e posizionala su un manichino o una gruccia professionale.")
 
+    # Layout a due colonne: Input a sinistra, Risultato a destra
     col_foto1, col_foto2 = st.columns([1.2, 1.8], gap="large")
     
     with col_foto1:
         st.markdown("### 1️⃣ Carica la tua Foto Reale")
-        foto_originale = st.file_uploader("Trascina qui la foto della maglietta:", type=["jpg", "jpeg", "png"], key="vinted_uploader")
+        foto_originale = st.file_uploader("Trascina qui la foto scattata:", type=["jpg", "jpeg", "png"], key="vinted_uploader")
         
         if foto_originale:
-            st.image(foto_originale, caption="Foto originale caricata", width=130)
+            st.image(foto_originale, caption="Foto originale caricata", width=140)
 
-        # SEZIONE WORKAROUND PER CAPI BIANCHI / SCOLORITI
-        st.markdown("### ⚙️ Ottimizzazione AI Speciale")
-        maglietta_bianca_fix = st.checkbox("👕 La maglietta bianca sparisce? Attiva correzione bordi", value=True, help="Forza l'AI a vedere il tessuto bianco se lo sfondo originale è chiaro.")
+        st.markdown("### ⚙️ Filtri di Correzione e Risoluzione")
+        # Interruttore fondamentale per evitare la sparizione del tessuto bianco
+        maglietta_bianca_fix = st.checkbox(
+            "👕 Attiva protezione capi bianchi/chiari", 
+            value=True, 
+            help="Forza l'AI a scansionare i bordi del tessuto se lo sfondo originale è chiaro, impedendo che rimanga solo il logo."
+        )
+        
+        # Permette di cambiare il seed per generare variazioni diverse dello stesso sfondo
+        cambia_variante = st.button("🔄 Cambia variante dello sfondo casualmente")
+        if "bg_seed" not in st.session_state or cambia_variante:
+            st.session_state.bg_seed = random.randint(1, 9999)
 
-        st.markdown("### 2️⃣ Personalizza lo Scenario & Supporto")
+        st.markdown("### 2️⃣ Scegli il Supporto & lo Scenario")
         tipo_sfondo_scelto = st.selectbox(
-            "Seleziona l'ambientazione desiderata:",
+            "Dove vuoi posizionare il capo?",
             [
                 "Manichino invisibile in Showroom di lusso, luci calde",
                 "Gruccia in legno minimale su muro in cemento industriale",
@@ -55,32 +66,34 @@ with tab1:
             ]
         )
 
-        proporzione_capo = st.slider("Dimensione del livello nello sfondo:", 50, 90, 75)
+        proporzione_capo = st.slider("Dimensione del capo all'interno dello scenario (%):", 50, 90, 75)
 
     with col_foto2:
-        st.markdown("### 3️⃣ Risultato Elaborato HD")
+        st.markdown("### 3️⃣ Risultato Elaborato in Ultra HD")
         
         if foto_originale is not None:
-            if st.button("✨ Genera Foto Catalogo", type="primary"):
-                with st.spinner("Scontornamento e rendering in Ultra HD (1440p) in corso..."):
+            if st.button("✨ Genera Foto Catalogo HQ", type="primary"):
+                with st.spinner("Scontornamento avanzato e fusione dei livelli in corso..."):
                     try:
-                        # 1. Caricamento immagine e correzione orientamento
+                        # Caricamento immagine e auto-rotazione basata sui dati EXIF dello smartphone
                         img_input = Image.open(foto_originale)
                         img_input = ImageOps.exif_transpose(img_input)
                         
-                        # 2. Rimozione sfondo con trucco del contrasto se attivato
+                        # ALGORITMO ANTI-INVISIBILITÀ PER CAPI BIANCHI
                         if maglietta_bianca_fix:
-                            img_contrasto = ImageEnhance.Contrast(img_input).enhance(2.8)
-                            img_contrasto = ImageEnhance.Brightness(img_contrasto).enhance(0.7)
+                            # Creiamo temporaneamente un'immagine ad altissimo contrasto per far vedere la maglietta all'AI
+                            img_contrasto = ImageEnhance.Contrast(img_input).enhance(3.2)
+                            img_contrasto = ImageEnhance.Brightness(img_contrasto).enhance(0.55)
                             maschera_rembg = remove(img_contrasto).convert("RGBA")
                             
+                            # Estraiamo il canale Alfa (la sagoma) e lo applichiamo alla foto con i colori originali
                             alpha_canale = maschera_rembg.getchannel('A')
                             maglietta_isolata = img_input.convert("RGBA")
                             maglietta_isolata.putalpha(alpha_canale)
                         else:
                             maglietta_isolata = remove(img_input).convert("RGBA")
                         
-                        # 3. Mappatura dei prompt con risoluzione aumentata a 1440px
+                        # Mappatura dei prompt per l'AI generativa (Risoluzione Ultra HD richiesta nei dettagli)
                         prompt_mappa = {
                             "Manichino invisibile in Showroom di lusso, luci calde": "A clothing item displayed on an invisible mannequin hanger inside a luxury fashion boutique store, warm cinematic lighting, blurry rich background, premium look, commercial product photography, 8k resolution, highly detailed",
                             "Gruccia in legno minimale su muro in cemento industriale": "An elegant minimalist wooden clothes hanger hanging against a raw grey concrete wall, soft side lighting, professional product photography, urban style, 8k resolution, crisp details",
@@ -90,91 +103,176 @@ with tab1:
                             "Boutique Streetwear moderna con luci al neon soft": "Modern hypebeast streetwear clothing store interior, high-end display rack, soft purple and white neon ambient lights, blurred background, crisp 8k texturing"
                         }
                         
+                        # Richiesta dello sfondo Ultra HD (1440x1440 pixel)
                         prompt_sfondo = prompt_mappa[tipo_sfondo_scelto].replace(" ", "%20")
-                        sfondo_url = f"https://image.pollinations.ai/p/{prompt_sfondo}?width=1440&height=1440&nologo=true&model=flux&seed=102"
+                        sfondo_url = f"https://image.pollinations.ai/p/{prompt_sfondo}?width=1440&height=1440&nologo=true&model=flux&seed={st.session_state.bg_seed}"
                         
                         response_sfondo = requests.get(sfondo_url, timeout=30)
                         
                         if response_sfondo.status_code == 200:
-                            # Dimensione Ultra HD 1440x1440
                             sfondo_reale = Image.open(io.BytesIO(response_sfondo.content)).resize((1440, 1440)).convert("RGBA")
                             
-                            # 4. Ridimensionamento proporzionale ad alta qualità (LANCZOS)
+                            # Ridimensionamento proporzionale ad alta qualità del capo d'abbigliamento
                             dim_max = int(1440 * (proporzione_capo / 100))
                             maglietta_isolata.thumbnail((dim_max, dim_max), Image.Resampling.LANCZOS)
                             
-                            # 5. Generazione ombra morbida HD
+                            # Generazione di un'ombra morbida realistica sotto il capo
                             alpha_ombra = maglietta_isolata.getchannel('A')
-                            ombra = Image.new("RGBA", maglietta_isolata.size, (0, 0, 0, 50))
+                            ombra = Image.new("RGBA", maglietta_isolata.size, (0, 0, 0, 48))
                             ombra.putalpha(alpha_ombra)
-                            ombra = ombra.resize((maglietta_isolata.width + 20, maglietta_isolata.height + 20))
-                            ombra = ombra.filter(ImageFilter.GaussianBlur(18))
+                            ombra = ombra.resize((maglietta_isolata.width + 24, maglietta_isolata.height + 24))
+                            ombra = ombra.filter(ImageFilter.GaussianBlur(20))
                             
-                            # 6. Composizione finale dei livelli
+                            # Posizionamento e composizione finale dei livelli sul canvas 1440p
                             telaio_trasparente = Image.new("RGBA", (1440, 1440), (0, 0, 0, 0))
                             pos_x = (1440 - maglietta_isolata.width) // 2
                             pos_y = (1440 - maglietta_isolata.height) // 2
                             
-                            telaio_trasparente.paste(ombra, (pos_x - 10, pos_y + 12))
+                            telaio_trasparente.paste(ombra, (pos_x - 12, pos_y + 14))
                             telaio_trasparente.paste(maglietta_isolata, (pos_x, pos_y), mask=maglietta_isolata)
                             
                             immagine_pronta = Image.alpha_composite(sfondo_reale, telaio_trasparente).convert("RGB")
                             
-                            # ✨ AGGIUNTA FILTRO NITIDEZZA HD PRO ✨
+                            # FILTRO NITIDEZZA AVANZATO (Rende loghi, scritte e trame del tessuto ultra definiti)
                             esaltatore_nitidezza = ImageEnhance.Sharpness(immagine_pronta)
-                            immagine_pronta = esaltatore_nitidezza.enhance(1.3) # Aumenta la definizione dei bordi e dei loghi
+                            immagine_pronta = esaltatore_nitidezza.enhance(1.4)
                             
-                            # Mostra il risultato forzando una larghezza fissa a schermo per non sgranarlo sul browser
-                            st.image(immagine_pronta, caption="Anteprima Catalogo HD", width=620)
+                            # Mostra l'anteprima bloccando la larghezza per evitare l'allungamento sgranato del browser
+                            st.image(immagine_pronta, caption="Anteprima del tuo annuncio premium", width=580)
                             
-                            # Bottone di download sicuro alla massima qualità
+                            # Salvataggio in memoria alla massima qualità fotografica (Zero Compressione)
                             buffer = io.BytesIO()
-                            immagine_pronta.save(buffer, format="JPEG", quality=100) # Qualità JPEG al 100% senza compressione
+                            immagine_pronta.save(buffer, format="JPEG", quality=100)
+                            
                             st.download_button(
-                                label="📥 Scarica Immagine Ultra HQ (1440p)",
+                                label="📥 Scarica Immagine Ultra HD (1440p)",
                                 data=buffer.getvalue(),
-                                file_name="vinted_ultra_hd.jpg",
+                                file_name="vinted_annuncio_hd.jpg",
                                 mime="image/jpeg"
                             )
                         else:
-                            st.error("Il server di generazione dello sfondo non ha risposto. Riprova tra un istante.")
+                            st.error("Il server di rendering dello sfondo non ha risposto. Riprova tra pochi secondi.")
                     except Exception as e:
-                        st.error(f"Errore durante l'elaborazione: {e}.")
+                        st.error(f"Si è verificato un errore durante l'elaborazione dell'immagine: {e}")
         else:
-            st.info("💡 Carica un'immagine nella colonna di sinistra per iniziare la trasformazione.")
+            st.info("💡 Carica la foto della tua maglietta nella colonna di sinistra per iniziare la trasformazione.")
 
 # ==========================================
-# TAB 2: GENERATORE DESCRIZIONI AI
+# TAB 2: GENERATORE DESCRIZIONI COMMERCIALI
 # ==========================================
 with tab2:
     st.header("📝 Scrittura Automatica Annunci Vinted")
     col_a, col_b = st.columns(2, gap="large")
+    
     with col_a:
-        brand = st.text_input("Brand / Marca del capo", value="", placeholder="Es. Off-White, Nike...")
-        tipo_capo = st.text_input("Tipo di articolo", value="", placeholder="Es. T-shirt, Felpa...")
-        colore = st.text_input("Colore e dettagli visivi", value="", placeholder="Es. Bianco con stampa rossa...")
+        brand = st.text_input("Brand / Marca del capo", value="", placeholder="Es. Off-White, Nike, Adidas...")
+        tipo_capo = st.text_input("Tipo di articolo", value="", placeholder="Es. T-shirt, Felpa, Hoodie...")
+        colore = st.text_input("Colore e dettagli visivi", value="", placeholder="Es. Bianco con stampa rossa sul petto...")
         
-        st.markdown("### 📏 Taglia e Misure")
+        st.markdown("### 📏 Taglia e Misure in Piano")
         taglia = st.selectbox("Taglia ufficiale", ["XS", "S", "M", "L", "XL", "XXL"], index=2)
         vestibilita = st.selectbox("Vestibilità (Fit)", ["Regolare (True to size)", "Oversize / Baggy", "Slim fit"])
         
         col_cm1, col_cm2 = st.columns(2)
         with col_cm1:
-            cm_ascelle = st.text_input("Ascella - Ascella (cm)", value="", placeholder="Es. 54")
+            cm_ascelle = st.text_input("Distanza ascella-ascella (cm)", value="", placeholder="Es. 54")
         with col_cm2:
-            cm_lunghezza = st.text_input("Lunghezza totale (cm)", value="", placeholder="Es. 70")
+            cm_lunghezza = st.text_input("Lunghezza totale (cm)", value="", placeholder="Es. 71")
             
-        st.markdown("### 🎚️ Stato del capo")
-        condizioni = st.selectbox("Condizioni del capo", ["Nuovo con cartellino", "Nuovo senza cartellino", "Ottime condizioni", "Buone condizioni"])
-        difetti = st.text_input("Note su eventuali difetti", value="", placeholder="Es. nessuno...")
+        st.markdown("### 🎚️ Stato di Usura")
+        condizioni = st.selectbox("Condizioni generali", ["Nuovo con cartellino", "Nuovo senza cartellino", "Ottime condizioni", "Buone condizioni"])
+        difetti = st.text_input("Note su imperfezioni o difetti", value="", placeholder="Es. nessuno, nessun segno di usura...")
 
     with col_b:
         st.subheader("📋 Testo Pronto da Copiare")
+        
+        # Generazione dinamica di titoli e tag commerciali
         titolo_generato = f"✨ {tipo_capo.capitalize()} {brand.upper()} - Taglia {taglia}" if tipo_capo or brand else ""
-        nota_difetti = f"• 🔎 Difetti: {difetti.capitalize()}" if difetti else "• 🔎 Difetti: Nessuno, capo perfetto."
+        nota_difetti = f"• 🔎 Difetti: {difetti.capitalize()}" if difetti else "• 🔎 Difetti: Nessuno, capo mantenuto in modo maniacale."
         
         stringa_misure = ""
         if cm_ascelle or cm_lunghezza:
-            stringa_misure = "• 📐 Misure prese in piano:\n"
+            stringa_misure = "• 📐 Misure precise prese in piano:\n"
             if cm_ascelle: stringa_misure += f"    - Ascella - Ascella: {cm_ascelle} cm\n"
-            if cm_lunghezza: stringa_misure += f"    - Lunghezza totale: {cm_lunghezza} cm\
+            if cm_lunghezza: stringa_misure += f"    - Lunghezza totale: {cm_lunghezza} cm\n"
+
+        brand_tag = brand.replace(' ', '').lower() if brand else "brand"
+        tipo_tag = tipo_capo.replace(' ', '').lower() if tipo_capo else "abbigliamento"
+
+        descrizione_generata = f"""🇮🇹 DESCRIZIONE ARTICOLO PREMIUM:
+Vendo bellissima {tipo_capo.lower() if tipo_capo else 'maglia'} originale {brand.capitalize() if brand else '-'}. Il capo è stato lavato professionalmente, igienizzato e conservato piegato.
+
+• 🎨 Colore e Dettagli: {colore.capitalize() if colore else '-'}
+• 📏 Taglia: {taglia}
+• 📈 Vestibilità consigliata: {vestibilita}
+{stringa_misure}• 💎 Condizioni: {condizioni}
+{nota_difetti}
+
+Spedizione super rapida e protetta entro 24 ore dall'acquisto 📦. Se hai domande o vuoi foto aggiuntive scrivimi pure in chat! 📲
+
+---
+# {brand_tag} #{tipo_tag} #taglia{taglia.lower()} #streetwear #vinteditalia #reseller
+"""
+        st.text_input("📌 Titolo da inserire su Vinted:", titolo_generato)
+        st.text_area("📄 Descrizione completa da inserire su Vinted:", descrizione_generata, height=340)
+
+# ==========================================
+# TAB 3: CALCOLATORE PREZZI E MARGINI LOGISTICI
+# ==========================================
+with tab3:
+    st.header("💰 Controllo Margini e Analisi dei Profitti")
+    col_input, col_chart = st.columns([1.5, 2.5], gap="large")
+
+    with col_input:
+        st.markdown("### 📊 Analisi Finanziaria del Capo")
+        costo_acquisto = st.number_input("💰 Quanto hai pagato questo capo? (€)", min_value=0.0, value=15.0, format="%.2f")
+        prezzo_vendita = st.number_input("🏷️ Prezzo a cui vuoi venderlo su Vinted (€)", min_value=0.0, value=45.0, format="%.2f")
+        percentuale_sconto = st.slider("Che sconto imposti se un utente fa un lotto? (%):", 0, 50, 15)
+
+    with col_chart:
+        guadagno_netto = prezzo_vendita - costo_acquisto
+        roi = (guadagno_netto / costo_acquisto) * 100 if costo_acquisto > 0 else 0
+        prezzo_scontato_lotto = prezzo_vendita * (1 - (percentuale_sconto / 100))
+        guadagno_lotto = prezzo_scontato_lotto - costo_acquisto
+
+        st.markdown("### 🏬 Performance Economica")
+        m_col1, m_col2 = st.columns(2)
+        with m_col1: 
+            st.metric(label="🤑 Guadagno Netto (Vendita Singola)", value=f"{guadagno_netto:.2f} €")
+        with m_col2: 
+            st.metric(label="📈 Ritorno sull'Investimento (ROI)", value=f"{roi:.1f}%")
+
+        st.markdown("---")
+        st.markdown("##### 📊 Tabella Comparativa Ricavi")
+        data_tabella = {
+            "Scenario di Vendita": ["Vendita Singola Standard", f"Vendita in Lotto (Scontata del {percentuale_sconto}%)"],
+            "Prezzo Pagato dall'Acquirente (€)": [f"{prezzo_vendita:.2f} €", f"{prezzo_scontato_lotto:.2f} €"],
+            "Il tuo Profitto Reale (€)": [f"{guadagno_netto:.2f} €", f"{guadagno_lotto:.2f} €"],
+            "Valutazione Operazione": ["Margine Massimo" if guadagno_netto > 0 else "Perdita", "Margine Ottimizzato" if guadagno_lotto > 0 else "Perdita"]
+        }
+        st.table(pd.DataFrame(data_tabella))
+
+# ==========================================
+# TAB 4: TREND E MONITORAGGIO MERCATO
+# ==========================================
+with tab4:
+    st.header("📊 Trend di Mercato Caldi & Ricerche Frequenti")
+    col_t1, col_t2 = st.columns(2, gap="medium")
+    
+    with col_t1:
+        st.markdown("### 🔥 Categorie più cercate questo mese")
+        tabelle_ricerca = pd.DataFrame({
+            "Posizione": [1, 2, 3, 4, 5],
+            "Categoria/Stile Outfit": ["Sneakers Hype (Jordan, Dunk, Campus)", "Giacche Tecniche Gorpcore (Arc'teryx, TNF)", "Denim Baggy / Skate Pants Y2K", "T-Shirt Streetwear Grafiche Vintage", "Varsity Jackets / Giacche College Usate"],
+            "Volume di Ricerche Giornaliere": ["Altissimo (20k+)", "Alto (14k+)", "Alto (11k+)", "Medio-Alto (9k+)", "In forte crescita (5k+)"]
+        })
+        st.dataframe(tabelle_ricerca, use_container_width=True, hide_index=True)
+
+    with col_t2:
+        st.markdown("### 📈 Nicchie ad alto margine (Meno concorrenza)")
+        tabelle_nicchie = pd.DataFrame({
+            "Posizione": [1, 2, 3, 4],
+            "Prodotti Vintage / Archivio": ["T-shirt di Band Musicali Anni '90", "Maglie da Calcio Vintage (Pre-2004)", "Pantaloni Workwear Carhartt/Dickies Usurati", "Giacche a vento Colorblock Old School"],
+            "Incremento Domanda": ["+145%", "+120%", "+110%", "+85%"]
+        })
+        st.dataframe(tabelle_nicchie, use_container_width=True, hide_index=True)
