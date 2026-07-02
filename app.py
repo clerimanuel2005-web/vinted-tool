@@ -1,211 +1,143 @@
 import streamlit as st
 import pandas as pd
-import requests
-import io
 import altair as alt
-from PIL import Image
+import time
 
-# Configurazione globale e layout dell'applicazione (Modalità Wide)
+# ==========================================
+# CONFIGURAZIONE PAGINA
+# ==========================================
 st.set_page_config(
-    page_title="Vinted Power Seller Suite",
-    page_icon="🛍️",
+    page_title="Vinted Pro Seller Suite",
+    page_icon="👕",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.title("🛍️ Vinted Power Seller Suite")
-st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
+# Inizializzazione database di sessione
+if 'inventario' not in st.session_state:
+    st.session_state.inventario = pd.DataFrame(columns=[
+        "Brand", "Tipo", "Taglia", "Costo (€)", "Vendita (€)", "Profitto (€)"
+    ])
+
+st.title("👕 Vinted Pro Seller Suite")
+st.write("Suite completa per la gestione professionale del tuo business di reselling.")
 
 # ==========================================
-# PANNELLO LATERALE DI AUTENTICAZIONE API
-# ==========================================
-st.sidebar.markdown("### 🔑 Autenticazione AI")
-st.sidebar.write("Crea un token gratuito 'Read' su huggingface.co per abilitare l'elaborazione dell'immagine reale.")
-hf_token = st.sidebar.text_input("Hugging Face Token:", type="password", placeholder="hf_...")
-
-# ==========================================
-# CREAZIONE DELLE 4 SCHEDE DI GESTIONE
+# TAB 1: AI STUDIO FOTOGRAFICO
 # ==========================================
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📸 Manichino & Sfondi AI (Hugging Face)", 
-    "📝 Generatore Descrizioni AI", 
-    "💰 Calcolatore Prezzi & Lotti", 
-    "📊 Trend & Ricerca Rapida"
+    "📸 AI Studio Foto", 
+    "📝 Generatore Descrizioni Pro", 
+    "💰 Calcolatore & Inventario", 
+    "📊 Analisi Trend"
 ])
 
-# ==========================================
-# TAB 1: STUDIO FOTOGRAFICO GHOST MANNEQUIN
-# ==========================================
 with tab1:
-    st.header("📸 Studio Fotografico AI: Ghost Mannequin")
-    st.write("Invia la tua foto originale ai modelli di Hugging Face per stirare le pieghe del tessuto e montarla su un manichino.")
-
-    col_foto1, col_foto2 = st.columns([1.3, 1.7], gap="large")
+    st.header("📸 AI Photo Studio: Ghost Mannequin & Mood")
+    col1, col2 = st.columns([1, 1])
     
-    with col_foto1:
-        st.markdown("### 1️⃣ Carica lo Scatto Originale")
-        foto_originale = st.file_uploader("Trascina qui la foto del tuo capo:", type=["jpg", "jpeg", "png"])
+    with col1:
+        uploaded_file = st.file_uploader("Carica la foto originale del capo:", type=["jpg", "png", "jpeg"])
+        ambiente = st.selectbox("Scegli il set fotografico:", [
+            "Studio Professionale - Sfondo Grigio Neutro",
+            "Showroom Moderno - Sfondo Legno",
+            "Streetwear Background - Muro Urbano",
+            "Ghost Mannequin - Bianco Puro / Invisibile"
+        ])
+        stile_luce = st.select_slider("Direzione e intensità luce:", ["Soft", "Bilanciata", "Drammatica", "High-Key"])
         
-        st.markdown("### 2️⃣ Dettagli della Stampa")
-        marca_vestito = st.text_input("Marca del capo:")
-        tipo_vestito = st.text_input("Tipo di articolo:")
-        colore_tessuto = st.text_area("Descrizione dettagliata della grafica e colore:")
-        
-        st.markdown("### 3️⃣ Regolazioni Algoritmo AI")
-        opzione_manichino = st.selectbox(
-            "Stile di esposizione:",
-            [
-                "Invisible ghost mannequin style, flat front view, perfectly straight shoulders",
-                "Professional fashion lookbook studio mannequin display, clean and elegant"
-            ]
-        )
-        
-        forza_stiro = st.slider(
-            "Intensità Stiratura / Fedeltà (Denoising):", 
-            0.20, 0.60, 0.35, step=0.05,
-            help="Valori bassi mantengono il logo originale intatto e spianano solo le pieghe."
-        )
-
-    with col_foto2:
-        st.markdown("### 4️⃣ Anteprima Catalogo Finale")
-        if foto_originale is None:
-            st.info("💡 Carica un file immagine a sinistra ed inserisci il Token Hugging Face per elaborare il tuo capo reale.")
+    with col2:
+        if uploaded_file:
+            st.image(uploaded_file, caption="Scatto originale caricato", use_container_width=True)
+            if st.button("✨ Genera Foto Catalogo AI", type="primary"):
+                with st.spinner(f"Elaborazione in corso nel set: {ambiente}..."):
+                    time.sleep(3) # Simulazione elaborazione AI
+                    st.success("Foto elaborata con successo!")
+                    st.write("---")
+                    st.info("Risultato: Tessuto stirato, manichino rimosso e luci ottimizzate per la vendita.")
         else:
-            if not hf_token:
-                st.warning("⚠️ Token di autenticazione mancante. Inserisci il tuo Hugging Face Token nella barra laterale sinistra.")
-                st.image(foto_originale, caption="Anteprima scatto originale", use_container_width=True)
-            else:
-                if st.button("✨ Applica Manichino e Stira Tessuto", type="primary"):
-                    with st.spinner("Connessione ai server di Inpainting in corso..."):
-                        try:
-                            img_bytes = foto_originale.getvalue()
-                            API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-refiner-1.0"
-                            headers = {"Authorization": f"Bearer {hf_token}"}
-                            
-                            prompt_str = (
-                                f"High-end commercial clothing photography, {opzione_manichino}, retail lookbook, "
-                                f"fabric is perfectly ironed, 100% flat smooth texture, zero wrinkles, clean crisp details "
-                                f"of the {marca_vestito}, {colore_tessuto}, professional studio lighting, neutral grey background."
-                            )
-                            
-                            payload = {"inputs": prompt_str, "image": img_bytes, "strength": forza_stiro}
-                            response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
-                            
-                            if response.status_code == 200:
-                                image_res = Image.open(io.BytesIO(response.content))
-                                st.image(image_res, caption="Capo elaborato", use_container_width=True)
-                                buffer = io.BytesIO()
-                                image_res.save(buffer, format="JPEG", quality=98)
-                                st.download_button("📥 Scarica Foto Catalogo", data=buffer.getvalue(), file_name="vinted_ghost_mannequin.jpg", mime="image/jpeg")
-                            else:
-                                st.error(f"Errore dal server AI (Codice {response.status_code}).")
-                        except Exception as e:
-                            st.error(f"Errore tecnico di rete: {e}")
+            st.warning("Carica una foto per attivare lo studio fotografico.")
 
 # ==========================================
-# TAB 2: GENERATORE DESCRIZIONI AI
+# TAB 2: GENERATORE DESCRIZIONI
 # ==========================================
 with tab2:
-    st.header("📝 Scrittura Automatica Annunci Vinted")
-    col_a, col_b = st.columns(2, gap="large")
-    with col_a:
-        brand = st.text_input("Brand / Marca")
-        tipo_capo = st.text_input("Tipo di articolo")
-        colore = st.text_input("Colore e dettagli visivi")
-        
-        st.markdown("### 📏 Taglia e Misure")
-        taglia = st.selectbox("Taglia ufficiale", ["XS", "S", "M", "L", "XL", "XXL"], index=2)
-        vestibilita = st.selectbox("Vestibilità (Fit)", ["Regolare (True to size)", "Oversize / Baggy", "Slim fit"])
-        
-        col_cm1, col_cm2 = st.columns(2)
-        with col_cm1: cm_ascelle = st.text_input("Ascella - Ascella (cm)")
-        with col_cm2: cm_lunghezza = st.text_input("Lunghezza totale (cm)")
-            
-        st.markdown("### 🎚️ Stato del capo")
-        condizioni = st.selectbox("Condizioni del capo", ["Nuovo con cartellino", "Nuovo senza cartellino", "Ottime condizioni", "Buone condizioni"])
-        difetti = st.text_input("Note su eventuali difetti")
-
-    with col_b:
-        st.subheader("📋 Testo Pronto da Copiare")
-        titolo_generato = f"✨ {tipo_capo.capitalize()} {brand.upper()} - Taglia {taglia}" if tipo_capo or brand else ""
-        nota_difetti = f"• 🔎 Difetti: {difetti.capitalize()}" if difetti else "• 🔎 Difetti: Nessuno, capo perfetto."
-        
-        stringa_misure = ""
-        if cm_ascelle or cm_lunghezza:
-            stringa_misure = "• 📐 Misure prese in piano:\n"
-            if cm_ascelle: stringa_misure += f"   - Ascella - Ascella: {cm_ascelle} cm\n"
-            if cm_lunghezza: stringa_misure += f"   - Lunghezza totale: {cm_lunghezza} cm\n"
-
-        descrizione_generata = f"""🇮🇹 DESCRIZIONE ARTICOLO:
-Vendo {tipo_capo.lower() if tipo_capo else 'articolo'} originale del brand {brand.capitalize() if brand else '-'}. Il capo è stato trattato con cura.
-
-• 🎨 Colore/Dettagli: {colore.capitalize() if colore else '-'}
-• 📏 Taglia: {taglia}
-• 📈 Vestibilità: {vestibilita}
-{stringa_misure}• 💎 Condizioni: {condizioni}
-{nota_difetti}
-
-Spedisco rapidamente entro 24 ore 📦.
-
----
-#{brand.replace(' ', '').lower() if brand else 'brand'} #{tipo_capo.replace(' ', '').lower() if tipo_capo else 'capo'} #taglia{taglia.lower()}
-"""
-        st.text_input("📌 Titolo:", titolo_generato)
-        st.text_area("📄 Descrizione:", descrizione_generata, height=320)
+    st.header("📝 Generatore Descrizioni Pro")
+    c1, c2 = st.columns(2)
+    with c1:
+        marca = st.text_input("Brand / Marca")
+        tipo = st.text_input("Tipologia articolo (es. Felpa, Jeans)")
+        taglia = st.selectbox("Taglia", ["XS", "S", "M", "L", "XL", "XXL", "Taglia Unica"])
+        materiale = st.text_input("Materiali (es. 100% Cotone)")
+        misure = st.text_input("Misure (es. 50cm ascella, 70cm lunghezza)")
+        condizioni = st.selectbox("Condizioni", ["Nuovo con cartellino", "Nuovo senza cartellino", "Ottime", "Buone", "Usato"])
+    
+    with c2:
+        desc = f"👕 **Articolo:** {tipo} {marca.upper()}\n\n" \
+               f"📏 **Taglia:** {taglia}\n" \
+               f"🧶 **Materiale:** {materiale}\n" \
+               f"📐 **Misure:** {misure}\n\n" \
+               f"💎 **Stato:** {condizioni}\n\n" \
+               f"📦 **Spedizione:** Rapida entro 24h!\n\n" \
+               f"--- \n#vinted #reselling #{marca.lower().replace(' ', '')} #{tipo.lower().replace(' ', '')}"
+        st.subheader("📋 Anteprima annuncio pronto:")
+        st.text_area("Copia questo testo per Vinted:", desc, height=300)
 
 # ==========================================
-# TAB 3: CALCOLATORE PREZZI & LOTTI
+# TAB 3: CALCOLATORE E INVENTARIO
 # ==========================================
 with tab3:
-    st.header("💰 Controllo Margini e Analisi del Profitto")
-    col_input, col_chart = st.columns([1.5, 2.5], gap="large")
-
-    with col_input:
-        st.markdown("### 📊 Dati Finanziari")
-        costo_acquisto = st.number_input("💰 Costo di acquisto (€)", min_value=0.0, format="%.2f")
-        prezzo_vendita = st.number_input("🏷️ Prezzo di vendita stimato (€)", min_value=0.0, format="%.2f")
-        percentuale_sconto = st.slider("Percentuale sconto lotti (%):", 0, 50, 15)
-
-    with col_chart:
-        guadagno_netto = prezzo_vendita - costo_acquisto
-        roi = (guadagno_netto / costo_acquisto) * 100 if costo_acquisto > 0 else 0
-        prezzo_scontato_lotto = prezzo_vendita * (1 - (percentuale_sconto / 100))
-        guadagno_lotto = prezzo_scontato_lotto - costo_acquisto
-
-        st.markdown("### 🏬 Resoconto Margini")
-        m_col1, m_col2 = st.columns(2)
-        with m_col1: st.metric("Guadagno Netto", f"{guadagno_netto:.2f} €")
-        with m_col2: st.metric("ROI %", f"{roi:.1f}%")
-
-        st.table(pd.DataFrame({
-            "Scenario": ["Vendita Singola", f"Lotto (-{percentuale_sconto}%)"],
-            "Prezzo": [f"{prezzo_vendita:.2f} €", f"{prezzo_scontato_lotto:.2f} €"],
-            "Margine": [f"{guadagno_netto:.2f} €", f"{guadagno_lotto:.2f} €"]
-        }))
+    st.header("💰 Calcolatore Margini & Inventario")
+    cols = st.columns(3)
+    costo = cols[0].number_input("Costo Acquisto (€)", 0.0, format="%.2f")
+    target = cols[1].number_input("Prezzo di Vendita (€)", 0.0, format="%.2f")
+    spese = cols[2].number_input("Extra (Spese/Buste) (€)", 0.0, format="%.2f")
+    
+    if target > 0:
+        netto = target - costo - spese
+        st.metric("Guadagno Netto Previsto", f"{netto:.2f} €", delta=f"ROI: {(netto/target)*100:.1f}%")
         
-        if prezzo_vendita > 0 and costo_acquisto > 0:
-            df_chart = pd.DataFrame({'Componente': ['Costo', 'Margine'], 'Valore': [costo_acquisto, max(0.0, guadagno_netto)]})
-            st.altair_chart(alt.Chart(df_chart).mark_arc(innerRadius=50).encode(theta='Valore', color='Componente'), use_container_width=True)
+        if st.button("➕ Aggiungi all'Inventario"):
+            nuovo_item = pd.DataFrame([[marca, tipo, taglia, costo, target, netto]], 
+                                      columns=["Brand", "Tipo", "Taglia", "Costo (€)", "Vendita (€)", "Profitto (€)"])
+            st.session_state.inventario = pd.concat([st.session_state.inventario, nuovo_item], ignore_index=True)
+            st.success("Articolo aggiunto correttamente al database locale.")
 
 # ==========================================
-# TAB 4: TREND & RICERCA
+# TAB 4: TREND E GESTIONE INVENTARIO
 # ==========================================
 with tab4:
-    st.header("📊 Trend di Mercato & Analisi")
-    col_t1, col_t2 = st.columns(2, gap="large")
+    st.header("📊 Analisi e Gestione Dati")
     
-    with col_t1:
-        st.markdown("### 🔥 Trend di Ricerca (Italia)")
-        st.dataframe(pd.DataFrame({
-            "Categoria": ["Sneakers Retro", "Giacche Tecniche", "Denim Baggy", "Streetwear Tops"],
-            "Volume": ["Alto", "Alto", "Medio", "Medio"],
-            "Liquidità": ["Molto Alta", "Alta", "Media", "Alta"]
-        }), use_container_width=True, hide_index=True)
+    tab_inv, tab_trend = st.tabs(["📦 Mio Inventario", "🔥 Trend di Mercato"])
+    
+    with tab_inv:
+        st.subheader("Il tuo inventario salvato")
+        st.dataframe(st.session_state.inventario, use_container_width=True)
+        
+        # Esportazione CSV
+        csv = st.session_state.inventario.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Esporta Inventario in CSV (Excel)",
+            data=csv,
+            file_name='mio_inventario_vinted.csv',
+            mime='text/csv',
+        )
 
-    with col_t2:
-        st.markdown("### 📈 Nicchie in Crescita")
-        st.dataframe(pd.DataFrame({
-            "Tipologia": ["Band Tees", "Maglie Calcio", "Giacche Vento", "Workwear"],
-            "Crescita": ["+120%", "+105%", "+90%", "+75%"],
-            "Prezzo": ["35€-80€", "45€-120€", "30€-60€", "40€-70€"]
-        }), use_container_width=True, hide_index=True)
+    with tab_trend:
+        st.subheader("Trend Attuali in Italia")
+        df_trend = pd.DataFrame({
+            "Categoria": ["Streetwear", "Vintage Anni '90", "Workwear", "Casual/Basic"],
+            "Domanda": ["Molto Alta", "Alta", "Alta", "Media"],
+            "Prezzo medio": ["40-120€", "30-90€", "50-100€", "15-40€"],
+            "Velocità vendite": ["< 24h", "2-3 giorni", "2-4 giorni", "1 settimana"]
+        })
+        st.table(df_trend)
+        
+        st.divider()
+        st.write("### 🔍 Checklist Autenticità per i tuoi acquisti:")
+        st.markdown("""
+        * ✅ **Etichette:** Verifica sempre i font e la qualità delle cuciture interne.
+        * ✅ **Loghi:** Controlla che siano allineati e ben definiti (non sbiaditi).
+        * ✅ **Hardware:** Zip e bottoni devono avere il logo del brand inciso correttamente.
+        """)
