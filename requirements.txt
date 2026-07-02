@@ -3,5 +3,3 @@ requests
 Pillow
 pandas
 altair
-numpy
-rembg
