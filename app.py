@@ -3,10 +3,11 @@ import pandas as pd
 import requests
 import io
 import base64
-from PIL import Image
-from rembg import remove  # Libreria per rimuovere lo sfondo gratis senza deformare i loghi
+from PIL import Image, ImageImageFilter, ImageOps
+from rembg import remove
+import numpy as np
 
-# Configurazione della pagina
+# Configurazione della pagina Streamlit
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
 
 st.title("🛍️ Vinted Power Seller Suite")
@@ -23,11 +24,11 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 # ==========================================
-# TAB 1: MANICHINO REALE E CAMBIO SFONDO AUTOMATICO (CORRETTO)
+# TAB 1: MANICHINO INVISIBILE E ADATTAMENTO SFONDO (GRATIS & CORRETTO)
 # ==========================================
 with tab1:
     st.header("📸 Manichino Invisibile & Cambio Sfondo Automatico via AI")
-    st.write("Questo sistema isola la tua maglietta originale (mantenendo il logo intatto) e la posiziona su uno sfondo professionale con effetto manichino.")
+    st.write("Isola la tua maglietta mantenendo il logo originale intatto al 100%, posizionandola su uno sfondo professionale da e-commerce.")
 
     col_foto1, col_foto2 = st.columns([1.2, 1.8], gap="large")
     
@@ -48,22 +49,27 @@ with tab1:
             ]
         )
 
+        proporzione_capo = st.slider("Dimensione della maglietta nello sfondo:", 50, 90, 70, step=5, help="Regola quanto deve apparire grande la maglietta rispetto al riquadro finale.")
+
     with col_foto2:
         st.markdown("### 3️⃣ Risultato Elaborato")
         
         if foto_originale is not None:
             if st.button("✨ Genera Foto Catalogo", type="primary"):
-                with st.spinner("Isolamento della maglietta e rimozione sfondo in corso..."):
+                with st.spinner("Isolamento della maglietta e fusione dello sfondo in corso..."):
                     try:
-                        # 1. RIMOZIONE SFONDO AUTOMATICA E GRATUITA (Mantiene il logo perfetto!)
+                        # 1. RIMOZIONE SFONDO AUTOMATICA (Mantiene il logo perfetto senza duplicati)
                         input_image = Image.open(foto_originale)
-                        output_image = remove(input_image) # La maglietta ora è isolata su sfondo trasparente
+                        # Raddrizza l'immagine se caricata da smartphone con orientamento errato
+                        input_image = ImageOps.exif_transpose(input_image)
                         
-                        # 2. GENERAZIONE DELLO SFONDO IDEALE CON POLLINATIONS AI
+                        maglietta_senza_sfondo = remove(input_image).convert("RGBA")
+                        
+                        # 2. GENERAZIONE DELLO SFONDO PROFESSIONALE CON POLLINATIONS AI
                         prompt_mappa = {
-                            "Studio grigio minimalista, luce morbida da catalogo": "Professional product photography background, empty ghost mannequin template torso, neutral soft grey photography studio background, high-end look, 8k",
-                            "Showroom di lusso sfocato, luci calde": "Luxury fashion boutique clothing store blurred background, elegant hanger display stand area, warm cinematic lighting",
-                            "Sfondo bianco puro e-commerce": "Clean minimalist bright solid white background for e-commerce catalog, studio lighting, sharp focus"
+                            "Studio grigio minimalista, luce morbida da catalogo": "Professional product photography background, elegant empty showroom studio, neutral soft grey background, commercial catalog lighting, 8k, photorealistic",
+                            "Showroom di lusso sfocato, luci calde": "Luxury fashion boutique clothing store interior blurred background, elegant display stand area, warm cinematic lighting, fashion lookbook",
+                            "Sfondo bianco puro e-commerce": "Clean minimalist bright solid white studio background for e-commerce catalog, studio soft lighting, sharp focus"
                         }
                         
                         prompt_sfondo = prompt_mappa[tipo_sfondo_scelto].replace(" ", "%20")
@@ -72,44 +78,54 @@ with tab1:
                         response_sfondo = requests.get(sfondo_url, timeout=30)
                         
                         if response_sfondo.status_code == 200:
-                            sfondo_ai = Image.open(io.BytesIO(response_sfondo.content)).resize((1080, 1080))
+                            sfondo_ai = Image.open(io.BytesIO(response_sfondo.content)).resize((1080, 1080)).convert("RGBA")
                             
-                            # 3. COMBINIAMO LA TUA MAGLIETTA SOPRA LO SFONDO AI
-                            # Convertiamo in RGBA per gestire la trasparenza
-                            maglietta_ritagliata = output_image.convert("RGBA")
+                            # 3. ADATTAMENTO DEL CAPO REALE SOPRA LO SFONDO GENERATO
+                            # Calcoliamo le dimensioni ottimali basate sullo slider
+                            dim_max = int(1080 * (proporzione_capo / 100))
+                            maglietta_senza_sfondo.thumbnail((dim_max, dim_max), Image.Resampling.LANCZOS)
                             
-                            # Ridimensioniamo proporzionalmente la maglietta per farla stare bene nel quadro
-                            maglietta_ritagliata.thumbnail((750, 750), Image.Resampling.LANCZOS)
+                            # Creiamo un'ombra morbida dietro la maglietta per dare l'effetto 3D staccato dal muro
+                            alpha = maglietta_senza_sfondo.getchannel('A')
+                            shadow = Image.new("RGBA", maglietta_senza_sfondo.size, (0, 0, 0, 80)) # ombra nera semitrasparente
+                            shadow.putalpha(alpha)
+                            shadow = shadow.resize((maglietta_senza_sfondo.width + 10, maglietta_senza_sfondo.height + 10))
+                            shadow = shadow.filter(ImageImageFilter.GaussianBlur(15)) # sfocatura dell'ombra
                             
-                            # Creiamo un livello trasparente per centrare la maglietta sullo sfondo
-                            livello_maglietta = Image.new("RGBA", (1080, 1080), (0, 0, 0, 0))
-                            pos_x = (1080 - maglietta_ritagliata.width) // 2
-                            pos_y = (1080 - maglietta_ritagliata.height) // 2
-                            livello_maglietta.paste(maglietta_ritagliata, (pos_x, pos_y))
+                            # Creiamo il livello finale dove comporre l'immagine
+                            livello_composizione = Image.new("RGBA", (1080, 1080), (0, 0, 0, 0))
                             
-                            # Uniamo lo sfondo generato dall'AI e il ritaglio della maglietta originale
-                            foto_finale = Image.alpha_composite(sfondo_ai.convert("RGBA"), livello_maglietta).convert("RGB")
+                            # Centriamo la maglietta e l'ombra nel quadro 1080x1080
+                            pos_x = (1080 - maglietta_senza_sfondo.width) // 2
+                            pos_y = (1080 - maglietta_senza_sfondo.height) // 2
                             
-                            # Mostriamo il risultato finale a schermo
-                            st.image(foto_finale, caption="Ecco il tuo capo su sfondo professionale", use_container_width=True)
+                            # Incolliamo prima l'ombra (leggermente spostata in basso) e poi la maglietta
+                            livello_composizione.paste(shadow, (pos_x - 5, pos_y + 10))
+                            livello_composizione.paste(maglietta_senza_sfondo, (pos_x, pos_y), mask=maglietta_senza_sfondo)
                             
-                            # Bottone per scaricare il file pronto
+                            # Unione finale tra lo sfondo generato dall'AI e la maglietta reale elaborata
+                            foto_finale = Image.alpha_composite(sfondo_ai, livello_composizione).convert("RGB")
+                            
+                            # Mostriamo il risultato finale a schermo senza errori visivi
+                            st.image(foto_finale, caption="Ecco il tuo capo ritagliato sul nuovo sfondo professionale", use_container_width=True)
+                            
+                            # Bottone per scaricare il file pronto per Vinted
                             buffer = io.BytesIO()
                             foto_finale.save(buffer, format="JPEG", quality=95)
                             st.download_button(
                                 label="📥 Scarica Foto Finita",
                                 data=buffer.getvalue(),
-                                file_name="vinted_mannequin_perfect.jpg",
+                                file_name="vinted_studio_perfect.jpg",
                                 mime="image/jpeg"
                             )
-                            st.success("Fatto! Il logo e la maglietta sono reali al 100%, ma lo sfondo e l'effetto catalogo sono stati ricreati dall'AI!")
+                            st.success("Fatto! Il logo Off-White e la maglietta sono reali al 100%, l'immagine non è sdoppiata e lo sfondo è pulito!")
                         else:
-                            st.error("Il server AI è congestionato. Attendi un istante e riprova.")
+                            st.error("Il server AI degli sfondi è momentaneamente occupato. Attendi un istante e riclicca il pulsante.")
                             
                     except Exception as e:
-                        st.error(f"Errore di connessione o elaborazione: {e}")
+                        st.error(f"Errore durante l'elaborazione dell'immagine: {e}")
         else:
-            st.info("💡 Carica lo scatto originale a sinistra e premi il pulsante per far fare tutto al sistema.")
+            st.info("💡 Carica lo scatto originale a sinistra, scegli l'ambiente e clicca sul pulsante rosso.")
 
 
 # ==========================================
