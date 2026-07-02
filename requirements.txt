@@ -4,4 +4,4 @@ Pillow
 pandas
 altair
 numpy
-opencv-python-headless
+rembg
