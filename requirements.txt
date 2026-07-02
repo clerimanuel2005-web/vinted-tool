@@ -1,10 +1,8 @@
-numpy==2.4.0
-numba>=0.60.0
-rembg[cpu]
-pandas
-altair
-sqlalchemy
-fpdf
-xlsxwriter
-pillow
+pip 
+install 
 streamlit
+pandas
+requests 
+pillow
+numpy 
+opencv-python
