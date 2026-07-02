@@ -2,81 +2,66 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import io
-import logging
-import re
-from datetime import datetime
-from PIL import Image, ImageEnhance
+from PIL import Image
 from rembg import remove
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base
-from fpdf import FPDF
-import xlsxwriter
+from datetime import datetime
 
-# --- CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="Vinted Pro Enterprise", layout="wide", page_icon="🏢")
+# --- CONFIGURAZIONE ---
+st.set_page_config(page_title="Vinted Pro Suite", layout="wide")
 
-# --- DATABASE SETUP ---
+# --- DATABASE ---
 Base = declarative_base()
-engine = create_engine('sqlite:///vinted_enterprise_master.db')
+engine = create_engine('sqlite:///vinted_master.db')
 Session = sessionmaker(bind=engine)
 
 class InventoryItem(Base):
-    __tablename__ = 'inventory_master'
+    __tablename__ = 'items'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
-    brand = Column(String(100), nullable=False)
-    tipo_capo = Column(String(100), nullable=False)
-    costo_acquisto = Column(Float, default=0.0)
-    prezzo_vendita = Column(Float, default=0.0)
-    profitto_netto = Column(Float, default=0.0)
+    brand = Column(String)
+    tipo = Column(String)
+    costo = Column(Float)
+    prezzo = Column(Float)
+    profitto = Column(Float)
 
 Base.metadata.create_all(engine)
 
-# --- FUNZIONI AI ---
-class AIEngine:
-    @staticmethod
-    def process_image(image_file):
-        try:
-            img = Image.open(image_file).convert("RGBA")
-            img_no_bg = remove(img)
-            canvas = Image.new("RGBA", (2000, 2000), (255, 255, 255, 255))
-            img_no_bg.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
-            offset = ((2000 - img_no_bg.width) // 2, (2000 - img_no_bg.height) // 2)
-            canvas.paste(img_no_bg, offset, img_no_bg)
-            return canvas.convert("RGB")
-        except Exception as e:
-            st.error(f"Errore AI: {e}")
-            return None
+# --- MODULI ---
 
-# --- MODULI UI ---
 def show_ai_studio():
     st.header("📸 AI Studio")
-    upload = st.file_uploader("Carica Foto", type=["jpg", "png"])
+    upload = st.file_uploader("Carica foto per rimuovere sfondo", type=["jpg", "png"])
     if upload:
-        if st.button("🚀 AVVIA ELABORAZIONE"):
-            res = AIEngine.process_image(upload)
-            if res:
-                st.image(res, caption="Risultato")
-                buf = io.BytesIO()
-                res.save(buf, format="JPEG")
-                st.download_button("📥 Scarica", buf.getvalue(), "vinted_asset.jpg")
+        if st.button("Elabora"):
+            img = Image.open(upload).convert("RGBA")
+            img_no_bg = remove(img)
+            st.image(img_no_bg, caption="Sfondo rimosso")
+
+def show_seo():
+    st.header("📝 Generatore SEO")
+    with st.form("seo_form"):
+        brand = st.text_input("Brand")
+        tipo = st.text_input("Tipo")
+        if st.form_submit_button("Genera"):
+            st.code(f"✨ VENDO: {tipo.upper()} {brand.upper()} - Ottime condizioni #vinted #secondhand")
 
 def show_finance():
-    st.header("💰 Hub Finanziario")
-    with st.form("finance_form"):
+    st.header("💰 Gestione Finanziaria")
+    with st.form("fin_form"):
         brand = st.text_input("Brand")
-        costo = st.number_input("Costo Acquisto", step=0.5)
-        prezzo = st.number_input("Prezzo Vendita", step=1.0)
-        if st.form_submit_button("Salva Transazione"):
-            netto = prezzo - costo
+        costo = st.number_input("Costo", step=0.50)
+        prezzo = st.number_input("Prezzo", step=1.00)
+        if st.form_submit_button("Salva"):
+            profitto = prezzo - costo
             session = Session()
-            new_item = InventoryItem(brand=brand, costo_acquisto=costo, prezzo_vendita=prezzo, profitto_netto=netto, tipo_capo="N/A")
-            session.add(new_item)
+            item = InventoryItem(brand=brand, costo=costo, prezzo=prezzo, profitto=profitto)
+            session.add(item)
             session.commit()
             session.close()
-            st.success(f"✅ Salvato! Profitto: €{netto:.2f}")
+            st.success("Salvataggio avvenuto!")
 
-def show_inventory():
+def show_magazzino():
     st.header("📦 Magazzino")
     session = Session()
     df = pd.read_sql(session.query(InventoryItem).statement, session.bind)
@@ -84,28 +69,25 @@ def show_inventory():
     if not df.empty:
         st.dataframe(df, use_container_width=True)
     else:
-        st.info("Nessun dato presente.")
+        st.write("Magazzino vuoto.")
 
 def show_analytics():
-    st.header("📈 Analisi")
+    st.header("📈 Analisi Profitti")
     session = Session()
     df = pd.read_sql(session.query(InventoryItem).statement, session.bind)
     session.close()
     if not df.empty:
-        st.metric("Totale Netto", f"€{df['profitto_netto'].sum():.2f}")
-        chart = alt.Chart(df).mark_bar().encode(x='brand', y='sum(profitto_netto)')
+        chart = alt.Chart(df).mark_bar().encode(x='brand', y='profitto')
         st.altair_chart(chart, use_container_width=True)
 
-# --- MAIN ROUTER ---
-def main():
-    menu = {
-        "📸 AI Studio": show_ai_studio,
-        "💰 Finanza": show_finance,
-        "📦 Magazzino": show_inventory,
-        "📈 Analisi": show_analytics
-    }
-    scelta = st.sidebar.radio("Navigazione", list(menu.keys()))
-    menu[scelta]()
+# --- MAIN ---
+menu = {
+    "📸 AI Studio": show_ai_studio,
+    "📝 SEO": show_seo,
+    "💰 Finanza": show_finance,
+    "📦 Magazzino": show_magazzino,
+    "📈 Analisi": show_analytics
+}
 
-if __name__ == "__main__":
-    main()
+scelta = st.sidebar.radio("Menu", list(menu.keys()))
+menu[scelta]()
