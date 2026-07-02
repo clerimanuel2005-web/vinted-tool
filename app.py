@@ -27,7 +27,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # ==========================================
 with tab1:
     st.header("📸 Ottimizzazione Sfondo Fotografico via AI")
-    st.write("Posiziona la foto del tuo capo di abbigliamento su uno sfondo professionale da e-commerce generato dall'intelligenza artificiale.")
+    st.write("Isola il tuo capo e posizionalo su manichini o grucce all'interno di scenari commerciali premium.")
 
     col_foto1, col_foto2 = st.columns([1.2, 1.8], gap="large")
     
@@ -38,72 +38,78 @@ with tab1:
         if foto_originale:
             st.image(foto_originale, caption="Foto originale caricata", width=130)
 
-        st.markdown("### 2️⃣ Personalizza l'Ambiente")
+        st.markdown("### 2️⃣ Personalizza lo Scenario & Supporto")
         tipo_sfondo_scelto = st.selectbox(
-            "Seleziona lo sfondo dello studio fotografico:",
+            "Seleziona l'ambientazione desiderata:",
             [
-                "Studio grigio minimalist, luce morbida da catalogo",
-                "Showroom di lusso sfocato, luci calde",
-                "Sfondo bianco puro e-commerce"
+                "Manichino invisibile in Showroom di lusso, luci calde",
+                "Gruccia in legno minimale su muro in cemento industriale",
+                "Manichino sartoriale in un negozio di Milano centro",
+                "Stand appendiabiti in metallo, sfondo studio grigio catalogo",
+                "Sfondo bianco puro e-commerce (Stile Amazon/Zalando)",
+                "Boutique Streetwear moderna con luci al neon soft"
             ]
         )
 
-        proporzione_capo = st.slider("Dimensione del livello nello sfondo:", 50, 90, 70)
+        proporzione_capo = st.slider("Dimensione del livello nello sfondo:", 50, 90, 72)
 
     with col_foto2:
         st.markdown("### 3️⃣ Risultato Elaborato")
         
         if foto_originale is not None:
             if st.button("✨ Genera Foto Catalogo", type="primary"):
-                with st.spinner("Scontornamento dell'articolo e fusione con lo sfondo AI in corso..."):
+                with st.spinner("Scontornamento e fusione su manichino in corso..."):
                     try:
-                        # 1. Caricamento immagine e correzione orientamento EXIF
+                        # 1. Caricamento immagine e correzione orientamento
                         img_input = Image.open(foto_originale)
                         img_input = ImageOps.exif_transpose(img_input)
                         
-                        # 2. Rimozione sfondo originale (Scontornamento automatico pulito)
+                        # 2. Rimozione sfondo originale
                         maglietta_isolata = remove(img_input).convert("RGBA")
                         
-                        # 3. Mappatura prompt per lo sfondo generativo
+                        # 3. Mappatura dei nuovi prompt con Manichini e Grucce richiesti
                         prompt_mappa = {
-                            "Studio grigio minimalist, luce morbida da catalogo": "Professional product photography background, elegant empty showroom studio, neutral soft grey background, commercial catalog lighting, 8k, photorealistic",
-                            "Showroom di lusso sfocato, luci calde": "Luxury fashion boutique clothing store interior blurred background, elegant display stand area, warm cinematic lighting, fashion lookbook",
-                            "Sfondo bianco puro e-commerce": "Clean minimalist bright solid white studio background for e-commerce catalog, studio soft lighting, sharp focus"
+                            "Manichino invisibile in Showroom di lusso, luci calde": "A clothing item displayed on an invisible mannequin hanger inside a luxury fashion boutique store, warm cinematic lighting, blurry rich background, premium look",
+                            "Gruccia in legno minimale su muro in cemento industriale": "An elegant minimalist wooden clothes hanger hanging against a raw grey concrete wall, soft side lighting, professional product photography, urban style",
+                            "Manichino sartoriale in un negozio di Milano centro": "A high-end fashion boutique background in Milan, an elegant tailor mannequin stand torso holding clothes, warm soft boutique lighting, blurred background",
+                            "Stand appendiabiti in metallo, sfondo studio grigio catalogo": "Professional e-commerce studio photography, a sleek metal clothing rack stand, neutral clean soft grey studio background, commercial lighting",
+                            "Sfondo bianco puro e-commerce (Stile Amazon/Zalando)": "Clean minimalist bright solid pure white studio background for e-commerce website catalog, sharp focus, seamless white backdrop",
+                            "Boutique Streetwear moderna con luci al neon soft": "Modern hypebeast streetwear clothing store interior, high-end display rack, soft purple and white neon ambient lights, blurred background"
                         }
                         
                         prompt_sfondo = prompt_mappa[tipo_sfondo_scelto].replace(" ", "%20")
-                        sfondo_url = f"https://image.pollinations.ai/p/{prompt_sfondo}?width=1080&height=1080&nologo=true&model=flux&seed=45"
+                        sfondo_url = f"https://image.pollinations.ai/p/{prompt_sfondo}?width=1080&height=1080&nologo=true&model=flux&seed=88"
                         
                         response_sfondo = requests.get(sfondo_url, timeout=30)
                         
                         if response_sfondo.status_code == 200:
                             sfondo_reale = Image.open(io.BytesIO(response_sfondo.content)).resize((1080, 1080)).convert("RGBA")
                             
-                            # 4. Ridimensionamento proporzionale dell'articolo scontornato
+                            # 4. Ridimensionamento proporzionale dell'articolo
                             dim_max = int(1080 * (proporzione_capo / 100))
                             maglietta_isolata.thumbnail((dim_max, dim_max), Image.Resampling.LANCZOS)
                             
-                            # 5. Generazione ombra artificiale per dare profondità sul manichino virtuale
+                            # 5. Generazione ombra artificiale per realismo sul manichino
                             alpha_canale = maglietta_isolata.getchannel('A')
-                            ombra = Image.new("RGBA", maglietta_isolata.size, (0, 0, 0, 65))
+                            ombra = Image.new("RGBA", maglietta_isolata.size, (0, 0, 0, 55))
                             ombra.putalpha(alpha_canale)
-                            ombra = ombra.resize((maglietta_isolata.width + 12, maglietta_isolata.height + 12))
-                            ombra = ombra.filter(ImageFilter.GaussianBlur(12))
+                            ombra = ombra.resize((maglietta_isolata.width + 16, maglietta_isolata.height + 16))
+                            ombra = ombra.filter(ImageFilter.GaussianBlur(14))
                             
-                            # 6. Composizione finale a livelli (Sfondo + Ombra + Capo)
+                            # 6. Composizione finale dei livelli
                             telaio_trasparente = Image.new("RGBA", (1080, 1080), (0, 0, 0, 0))
                             pos_x = (1080 - maglietta_isolata.width) // 2
                             pos_y = (1080 - maglietta_isolata.height) // 2
                             
-                            telaio_trasparente.paste(ombra, (pos_x - 6, pos_y + 8))
+                            telaio_trasparente.paste(ombra, (pos_x - 8, pos_y + 10))
                             telaio_trasparente.paste(maglietta_isolata, (pos_x, pos_y), mask=maglietta_isolata)
                             
                             immagine_pronta = Image.alpha_composite(sfondo_reale, telaio_trasparente).convert("RGB")
                             
-                            # Mostra il risultato a schermo
-                            st.image(immagine_pronta, caption="Foto finale ottimizzata per la vendita", use_container_width=True)
+                            # Mostra il risultato definitivo senza errori di stringa
+                            st.image(immagine_pronta, caption="Capo elaborato nel nuovo scenario commerciale", use_container_width=True)
                             
-                            # Download button corretto
+                            # Bottone di download sicuro
                             buffer = io.BytesIO()
                             immagine_pronta.save(buffer, format="JPEG", quality=98)
                             st.download_button(
@@ -115,7 +121,7 @@ with tab1:
                         else:
                             st.error("Il server di generazione dello sfondo non ha risposto. Riprova tra un istante.")
                     except Exception as e:
-                        st.error(f"Errore durante l'elaborazione: {e}. Controlla che la versione di Python su Streamlit Cloud sia la 3.11.")
+                        st.error(f"Errore durante l'elaborazione: {e}.")
         else:
             st.info("💡 Carica un'immagine nella colonna di sinistra per iniziare la trasformazione.")
 
