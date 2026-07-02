@@ -1,59 +1,38 @@
 import streamlit as st
 import pandas as pd
-from PIL import Image, ImageEnhance
-from rembg import remove
-import io
 
 # Configurazione della pagina del sito
 st.set_page_config(page_title="Vinted Speed Seller Online", page_icon="🛍️", layout="wide")
 
 st.title("🛍️ Vinted Speed Seller Tool")
-st.write("Migliora le tue foto e scopri i segreti del reselling per vendere in un lampo!")
+st.write("Il tuo braccio destro per vendere su Vinted al triplo della velocità!")
 
 # Creazione delle schede (Tabs) sul sito
-tab1, tab2 = st.tabs(["📸 Ottimizzatore Foto AI", "📊 Trend di Vendita del Mese"])
+tab1, tab2 = st.tabs(["📸 Ottimizzatore Foto AI Gratis", "📊 Trend di Vendita del Mese"])
 
 # ==========================================
-# TAB 1: OTTIMIZZATORE FOTO (ONLINE)
+# TAB 1: OTTIMIZZATORE FOTO 
 # ==========================================
 with tab1:
     st.header("Sistemazione Foto Istantanea")
-    st.write("Carica la foto del tuo vestito: l'AI rimuoverà lo sfondo e regoleremo la nitidezza per metterlo in risalto.")
-
-    uploaded_file = st.file_uploader("Scegli la foto di un vestito...", type=["jpg", "jpeg", "png"])
-
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.image(image, caption="Foto Originale", use_container_width=True)
-        
-        with col2:
-            with st.spinner("L'AI sta rimuovendo lo sfondo e stirando i dettagli..."):
-                # Rimozione dello sfondo gratis con rembg
-                img_bytes = uploaded_file.getvalue()
-                output_bytes = remove(img_bytes)
-                output_image = Image.open(io.BytesIO(output_bytes))
-                
-                # Creiamo uno sfondo bianco solido da studio
-                background = Image.new("RGBA", output_image.size, (255, 255, 255))
-                final_image = Image.alpha_composite(background, output_image.convert("RGBA")).convert("RGB")
-                
-                # Regolazione contrasto e nitidezza per attenuare le pieghe
-                enhancer_sharp = ImageEnhance.Sharpness(final_image)
-                final_image = enhancer_sharp.enhance(1.6) 
-                
-                enhancer_contrast = ImageEnhance.Contrast(final_image)
-                final_image = enhancer_contrast.enhance(1.15)
-                
-                st.image(final_image, caption="Foto Ottimizzata da Negozio", use_container_width=True)
-                
-                # Bottone per scaricare il risultato
-                buf = io.BytesIO()
-                final_image.save(buf, format="JPEG")
-                byte_im = buf.getvalue()
-                st.download_button(label="📥 Scarica Foto Perfetta", data=byte_im, file_name="vestito_vinted.jpg", mime="image/jpeg")
+    st.write("Per evitare rallentamenti e garantirti il risultato migliore senza pagare, usa i due step qui sotto:")
+    
+    st.markdown("""
+    ### 1️⃣ Step 1: Rimuovi lo sfondo in 2 secondi
+    Clicca sul link qui sotto per usare il tool AI numero uno al mondo. Trascina la foto del tuo vestito stropicciato e scarica la versione con lo sfondo bianco perfetto da studio:
+    """)
+    
+    # Pulsante accattivante per andare a rimuovere lo sfondo gratis
+    st.link_button("✨ Rimuovi Sfondo Gratis con AI", "https://www.photoroom.com/it/strumenti/rimuovere-sfondo-delle-foto", type="primary")
+    
+    st.markdown("""
+    ---
+    ### 2️⃣ Step 2: I trucchi per far sembrare il vestito come nuovo (Stirato)
+    Quando ricarichi la foto pulita su Vinted, l'algoritmo premia la nitidezza. Segui queste regole d'oro direttamente nell'editor di Vinted:
+    * **Luminosità al +15%:** Spariscono le ombre delle pieghe della maglietta stropicciata.
+    * **Contrasto al +10%:** I colori sembrano vivi e il tessuto sembra appena uscito dal negozio.
+    * **Nitidezza al massimo:** Mette in risalto le trame del brand, attirando subito i compratori.
+    """)
 
 # ==========================================
 # TAB 2: ANALISI TREND & RESELLING
@@ -77,4 +56,4 @@ with tab2:
     # Mostra la tabella
     st.dataframe(df, use_container_width=True)
     
-    st.info("💡 **Consiglio per guadagnare:** Cerca questi brand impostando il filtro 'Prezzo decrescente' o cercando lotti di vestiti a poco prezzo, applica lo strumento di rimozione sfondo della Tab 1, e rivendili singolarmente al prezzo medio indicato nella tabella!")
+    st.info("💡 **Consiglio per guadagnare:** Cerca questi brand su Vinted impostando il filtro 'Prezzo decrescente' o cercando lotti di vestiti a poco prezzo, ripulisci la foto e rivendili singolarmente seguendo i prezzi della tabella!")
