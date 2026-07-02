@@ -1,10 +1,8 @@
-pip 
-install 
-streamlit 
+streamlit
 pandas
-altair 
-pillow 
-rembg 
+altair
 sqlalchemy
 fpdf
 xlsxwriter
+pillow
+rembg[cpu]
