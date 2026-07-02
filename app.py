@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 import io
-import base64
-from PIL import Image
+from PIL import Image, ImageFilter
 
 # Configurazione della pagina
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
@@ -15,112 +14,96 @@ st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
 # CREAZIONE DELLE 4 SCHEDE DI GESTIONE
 # ==========================================
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📸 Manichino & Stiratura Avanzata AI", 
+    "📸 Manichino & Stiratura Reale AI", 
     "📝 Generatore Descrizioni AI", 
     "💰 Calcolatore Prezzi & Lotti", 
     "📊 Trend & Ricerca Rapida"
 ])
 
 # ==========================================
-# TAB 1: MANICHINO & STIRATURA REALE GESTITA DA AI
+# TAB 1: MANICHINO & STIRATURA REALE CON INTEGRAZIONE EFFETTIVA IMAGE-TO-IMAGE
 # ==========================================
 with tab1:
-    st.header("📸 Stiratura Professionale & Manichino via FLUX AI")
-    st.write("Carica lo scatto originale. L'AI analizzerà la maglietta, ne spianerà le pieghe e la monterà su un manichino da e-commerce.")
+    st.header("📸 Stiratura e Manichino AI (Basato sulla tua Foto Reale)")
+    st.write("Questo modulo invia la tua foto reale ai server di elaborazione per distendere il tessuto e modellarlo su un manichino invisibile.")
 
+    # Inserimento Token di autenticazione per l'API reale
+    st.sidebar.markdown("### 🔑 Autenticazione AI")
+    hf_token = st.sidebar.text_input("Inserisci il tuo Hugging Face Token:", type="password", help="Crea un token 'Read' gratuito su huggingface.co per abilitare la trasformazione dell'immagine originale.")
+    
     col_foto1, col_foto2 = st.columns([1.2, 1.8], gap="large")
     
     with col_foto1:
         st.markdown("### 1️⃣ Carica la tua Foto Reale")
-        foto_originale = st.file_uploader("Trascina qui la foto originale della maglietta (anche con pieghe):", type=["jpg", "jpeg", "png"])
+        foto_originale = st.file_uploader("Trascina qui lo scatto della tua maglietta:", type=["jpg", "jpeg", "png"])
         
-        if foto_originale:
-            st.image(foto_originale, caption="Foto originale caricata", width=150)
-
-        st.markdown("### 2️⃣ Aiuta l'AI a riconoscere i dettagli della stampa")
-        brand_capo = st.text_input("Marca (es. Off-White):", value="Off-White")
-        tipo_prodotto = st.text_input("Tipo di capo (es. T-shirt):", value="T-shirt")
-        
-        st.markdown("##### 🎯 Descrizione del Logo (Essenziale per non farlo rovinare)")
-        descrizione_stampa = st.text_area(
-            "Descrivi la stampa:", 
-            value="Big red arrows graphic pattern on the back, filled with red lips texture design"
-        )
-        
-        st.markdown("### 3️⃣ Scegli il Supporto da Catalogo")
-        tipo_esposizione = st.selectbox(
-            "Seleziona l'effetto desiderato:",
+        st.markdown("### 2️⃣ Parametri di Trasformazione")
+        opzione_manichino = st.selectbox(
+            "Stile di presentazione:",
             [
-                "Invisible ghost mannequin, perfectly ironed fabric, flat smooth texture, no wrinkles",
-                "Worn by a professional streetwear male model, lookbook catalog pose, perfectly ironed",
-                "Hanging cleanly on a premium luxury wooden hanger, sleek and smooth garment"
+                "Invisible ghost mannequin style, flat front view, perfectly straight shoulders",
+                "Professional fashion lookbook studio mannequin display, clean and elegant"
             ]
         )
         
-        tipo_sfondo = st.selectbox(
-            "Seleziona l'ambiente dello studio:",
-            [
-                "Clean photography studio background, neutral soft grey color, professional lighting",
-                "Luxury fashion showroom boutique with warm soft lighting",
-                "Minimalist bright white background for e-commerce website catalog"
-            ]
+        # Forza dell'intervento dell'AI (Denoising Strength)
+        # Un valore basso (es. 0.35) costringe l'AI a tenere la maglietta originale stirando solo le pieghe.
+        forza_trasformazione = st.slider(
+            "Fedeltà all'originale vs Stiratura (Denoising):", 
+            0.20, 0.60, 0.35, step=0.05,
+            help="Valori bassi mantengono la maglietta identica all'originale eliminando le pieghe. Valori alti modificano di più la forma per adattarla al manichino."
         )
-
-        # Questo slider dice all'AI quanta libertà ha. 
-        # Più è basso, più stira e pulisce lo sfondo; più è alto, più tiene la foto simile all'originale sul letto.
-        forza_ai = st.slider("Livello di Stiratura / Modifica AI (Strength):", 0.30, 0.70, 0.50, step=0.05,
-                             help="0.30 mantiene la maglietta identica ma cambia poco lo sfondo. 0.70 stira tutto e monta sul manichino, ma potrebbe alterare i dettagli minimi.")
 
     with col_foto2:
-        st.markdown("### 4️⃣ Risultato Elaborato dall'Intelligenza Artificiale")
+        st.markdown("### 3️⃣ Risultato Catalogo Finale")
         
         if foto_originale is not None:
-            if st.button("✨ Fai Stirare e Montare all'AI", type="primary"):
-                with st.spinner("L'AI sta rimuovendo le pieghe e posizionando il capo sul manichino..."):
-                    try:
-                        # Codifica l'immagine in Base64 per inviarla al motore di Inpainting FLUX
-                        bytes_data = foto_originale.getvalue()
-                        base64_image = base64.b64encode(bytes_data).decode("utf-8")
-                        data_url = f"data:image/jpeg;base64,{base64_image}"
-                        
-                        # Costruiamo il prompt per convincere l'AI a stirare e usare il manichino
-                        prompt_str = (
-                            f"Professional high-end e-commerce product photography of the exact {brand_capo.lower()} {tipo_prodotto.lower()} from the source image. "
-                            f"{tipo_esposizione}. {tipo_sfondo}. "
-                            f"The t-shirt must be perfectly ironed, 100% smooth fabric with zero wrinkles, pristine condition. "
-                            f"Maintain the identical print and graphic shapes: {descrizione_stampa.lower()}. "
-                            f"Photorealistic, crisp clean details, sharp focus, 8k catalog look."
-                        ).replace(" ", "%20")
-                        
-                        # Chiamata API al server FLUX con invio dell'immagine originale
-                        api_url = f"https://image.pollinations.ai/p/{prompt_str}?width=1080&height=1080&nologo=true&model=flux&seed=42"
-                        payload = {
-                            "image": data_url,
-                            "strength": forza_ai
-                        }
-                        
-                        response = requests.post(api_url, json=payload, timeout=45)
-                        
-                        if response.status_code == 200:
-                            image_res = Image.open(io.BytesIO(response.content))
-                            st.image(image_res, caption="Foto finale stirata dall'AI", use_container_width=True)
+            if not hf_token:
+                st.warning("⚠️ Per elaborare la tua foto reale tramite AI, inserisci il tuo Token gratuito di Hugging Face nella barra laterale sinistra.")
+                # Mostriamo comunque un'anteprima locale pulita di sicurezza
+                st.image(foto_originale, caption="Anteprima foto originale in attesa del Token AI", use_container_width=True)
+            else:
+                if st.button("✨ Applica Manichino e Stira Tessuto", type="primary"):
+                    with st.spinner("Invio della foto originale ai server AI. Rimozione pieghe in corso..."):
+                        try:
+                            # Prepariamo il file binario reale della maglietta dell'utente
+                            img_bytes = foto_originale.getvalue()
                             
-                            # Preparazione file per il download
-                            buffer = io.BytesIO()
-                            image_res.save(buffer, format="JPEG", quality=95)
-                            st.download_button(
-                                label="📥 Scarica Foto Catalogo Finita",
-                                data=buffer.getvalue(),
-                                file_name="vinted_ai_mannequin_stirato.jpg",
-                                mime="image/jpeg"
-                            )
-                            st.success("L'AI ha completato l'elaborazione! Se noti che il logo si deforma, abbassa il 'Livello di Stiratura AI' a 0.40 o 0.35 e riprova.")
-                        else:
-                            st.error("Il server AI è congestionato in questo momento. Attendi qualche istante e clicca nuovamente.")
-                    except Exception as e:
-                        st.error(f"Errore di connessione con il motore grafico AI: {e}")
+                            # Definiamo l'endpoint ufficiale che supporta la modifica strutturale di immagini esistenti
+                            API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-refiner-1.0"
+                            headers = {"Authorization": f"Bearer {hf_token}"}
+                            
+                            # Prompt ultra-specifico per imporre la stiratura mantenendo i dettagli grafici di base
+                            prompt_str = f"High-end e-commerce clothing photography, {opzione_manichino}, commercial retail display, crisp details, studio light, fabric is perfectly ironed, 100% smooth texture, zero wrinkles, highly realistic."
+                            
+                            payload = {
+                                "inputs": prompt_str,
+                                "image": img_bytes,
+                                "strength": forza_trasformazione
+                            }
+                            
+                            response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+                            
+                            if response.status_code == 200:
+                                image_res = Image.open(io.BytesIO(response.content))
+                                st.image(image_res, caption="Maglietta originale elaborata e stirata dall'AI", use_container_width=True)
+                                
+                                # Download del file finale pronto per Vinted
+                                buffer = io.BytesIO()
+                                image_res.save(buffer, format="JPEG", quality=98)
+                                st.download_button(
+                                    label="📥 Scarica Foto Catalogo",
+                                    data=buffer.getvalue(),
+                                    file_name="vinted_maglietta_stirata.jpg",
+                                    mime="image/jpeg"
+                                )
+                                st.success("Elaborazione completata con successo sulla tua foto originale!")
+                            else:
+                                st.error(f"Il server AI ha risposto con un errore (Codice {response.status_code}). Verifica che il tuo Token sia corretto o riprova tra un minuto.")
+                        except Exception as e:
+                            st.error(f"Errore tecnico di connessione: {e}")
         else:
-            st.info("💡 Carica lo scatto originale a sinistra, descrivi il logo e premi il pulsante per far fare tutto all'AI.")
+            st.info("💡 Carica lo scatto della maglietta a sinistra per iniziare.")
 
 # ==========================================
 # TAB 2: GENERATORE DESCRIZIONI AI
