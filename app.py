@@ -1,136 +1,121 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-import time
 import os
-from datetime import datetime
-from PIL import Image, ImageEnhance, ImageFilter
 import io
+import logging
+from datetime import datetime
+from PIL import Image, ImageEnhance
+from rembg import remove
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy.orm import sessionmaker, declarative_base
+from fpdf import FPDF
 
 # ==============================================================================
-# CONFIGURAZIONE E SETUP
+# 1. SETUP AMBIENTE, DB E LOGGING
 # ==============================================================================
-st.set_page_config(
-    page_title="Vinted Pro Seller Suite",
-    page_icon="🛍️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+logging.basicConfig(filename='vinted_pro.log', level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
-DB_FILE = "inventario_vinted.csv"
+Base = declarative_base()
+engine = create_engine('sqlite:///vinted_pro.db')
+Session = sessionmaker(bind=engine)
 
-if 'inventario' not in st.session_state:
-    if os.path.exists(DB_FILE):
-        st.session_state.inventario = pd.read_csv(DB_FILE)
-    else:
-        st.session_state.inventario = pd.DataFrame(columns=[
-            "ID", "Data", "Brand", "Tipo", "Taglia", "Stato", "Costo (€)", "Prezzo Vendita (€)", "Profitto Netto (€)", "Stato Annuncio"
-        ])
+class Prodotto(Base):
+    __tablename__ = 'prodotti'
+    id = Column(Integer, primary_key=True)
+    data = Column(DateTime, default=datetime.utcnow)
+    brand = Column(String)
+    tipo = Column(String)
+    prezzo_vendita = Column(Float)
+    costo_base = Column(Float)
+    profitto = Column(Float)
 
-st.markdown("""
-    <style>
-    .main { background-color: #f5f5f5; }
-    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #09b1ba; color: white; font-weight: bold; }
-    </style>
-    """, unsafe_allow_html=True)
+Base.metadata.create_all(engine)
 
-st.title("🛍️ Vinted Pro Seller Suite - Industrial Edition")
+# ==============================================================================
+# 2. MOTORI AI E FUNZIONI DI UTILITÀ
+# ==============================================================================
+def genera_pdf(brand, tipo, prezzo):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, txt=f"SCHEDA PRODOTTO PROFESSIONALE", ln=True, align='C')
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt=f"Brand: {brand}", ln=True)
+    pdf.cell(200, 10, txt=f"Tipo: {tipo}", ln=True)
+    pdf.cell(200, 10, txt=f"Prezzo Vendita: {prezzo} Euro", ln=True)
+    return pdf.output(dest='S').encode('latin-1')
+
+def elabora_foto_industriale(img_file):
+    input_img = Image.open(img_file)
+    # Rimozione sfondo tramite AI
+    img_no_bg = remove(input_img)
+    # Creazione background bianco professionale
+    canvas = Image.new("RGBA", (2000, 2000), (255, 255, 255, 255))
+    resized_img = img_no_bg.resize((1500, 1500))
+    canvas.paste(resized_img, (250, 250), resized_img)
+    return canvas.convert("RGB")
+
+# ==============================================================================
+# 3. INTERFACCIA GRAFICA (FRONTEND)
+# ==============================================================================
+st.set_page_config(page_title="Vinted Pro Enterprise", layout="wide", page_icon="🛍️")
+
+st.title("🛍️ Vinted Pro Suite - Enterprise Edition")
 st.markdown("---")
 
-# ==============================================================================
-# FUNZIONI CORE
-# ==============================================================================
-def salva_db():
-    st.session_state.inventario.to_csv(DB_FILE, index=False)
+tab1, tab2, tab3, tab4 = st.tabs(["📸 AI Studio", "📝 Annunci SEO", "💰 Finanza", "📦 Inventario"])
 
-def calcola_netto(prezzo_vendita, costo, commissioni_percent):
-    return prezzo_vendita - (prezzo_vendita * (commissioni_percent/100)) - costo
-
-def elabora_foto(img_file, filtri, intensita):
-    img = Image.open(img_file)
-    factor = intensita / 50.0  # Normalizzazione slide
-    
-    if "Rimuovi Pieghe (Stiratura AI)" in filtri:
-        img = img.filter(ImageFilter.GaussianBlur(radius=0.5)) # Ammorbidisce
-        img = ImageEnhance.Sharpness(img).enhance(factor * 1.2) # Riaffila
-    if "Enhance Texture" in filtri:
-        img = ImageEnhance.Contrast(img).enhance(factor)
-    if "Background Clean" in filtri:
-        img = ImageEnhance.Brightness(img).enhance(1.1)
-    return img
-
-# ==============================================================================
-# TABS PRINCIPALI
-# ==============================================================================
-tab1, tab2, tab3, tab4 = st.tabs(["📸 AI Studio Professionale", "📝 Generatore Annunci SEO", "💰 Business & Margini", "📦 Gestione Inventario"])
-
-# TAB 1: AI STUDIO
 with tab1:
-    st.header("📸 AI Studio: Ghost Mannequin & Restoration")
-    col1, col2 = st.columns([0.4, 0.6])
-    with col1:
-        img_input = st.file_uploader("Carica foto reale del capo:", type=["jpg", "png", "jpeg"])
-        opzioni_ai = ["Rimuovi Pieghe (Stiratura AI)", "Enhance Texture", "Background Clean"]
-        trattamenti = st.multiselect("Azioni AI:", opzioni_ai, default=["Rimuovi Pieghe (Stiratura AI)"])
-        forza = st.slider("Intensità Elaborazione (%)", 0, 100, 70)
-        
-    with col2:
-        if img_input:
-            if st.button("✨ AVVIA AI RESTORATION"):
-                with st.spinner("L'AI sta analizzando la struttura del tessuto..."):
-                    st.session_state.img_risultato = elabora_foto(img_input, trattamenti, forza)
-            
-            if 'img_risultato' in st.session_state:
-                st.image(st.session_state.img_risultato, caption="Output: Professionale")
-                buf = io.BytesIO()
-                st.session_state.img_risultato.save(buf, format="PNG")
-                st.download_button("📥 Scarica Foto Ottimizzata", buf.getvalue(), "foto_vinted_pro.png")
-        else:
-            st.info("Carica una foto per attivare il motore AI.")
+    st.header("📸 AI Studio: Background Removal")
+    uploaded = st.file_uploader("Carica foto capo (alta risoluzione)")
+    if uploaded and st.button("✨ Avvia AI Processing"):
+        with st.spinner("L'AI sta analizzando la sagoma..."):
+            res = elabora_foto_industriale(uploaded)
+            st.image(res, caption="Prodotto pronto per Vinted")
+            buf = io.BytesIO()
+            res.save(buf, format="JPEG")
+            st.download_button("📥 Scarica Foto Pro (JPG)", buf.getvalue(), "prodotto_finale.jpg")
 
-# TAB 2: GENERATORE ANNUNCI
 with tab2:
-    st.header("📝 Generatore Annunci SEO-Driven")
+    st.header("📝 Generatore Annunci & Documentazione")
     colA, colB = st.columns(2)
-    with colA:
-        brand = st.text_input("Brand / Marca")
-        tipo = st.text_input("Tipologia")
-        taglia = st.selectbox("Taglia", ["XS", "S", "M", "L", "XL", "XXL", "46", "48", "50"])
-        fit = st.select_slider("Vestibilità (Fit)", ["Slim", "Regolare", "Oversize"])
-    with colB:
-        condizioni = st.selectbox("Condizioni", ["Nuovo con cartellino", "Ottime", "Buone"])
-        colore = st.text_input("Colore / Pattern")
-        prezzo_target = st.number_input("Prezzo di vendita stimato €", 0.0)
-    
-    descrizione = f"👕 {tipo.upper()} {brand.upper()} - Taglia {taglia}\n\nVendo {tipo} {brand}. {condizioni}. Vestibilità: {fit}. Colore: {colore}.\n\n📦 Spedizione rapida!\n#{brand.lower().replace(' ', '')} #{tipo.lower().replace(' ', '')} #vinteditalia"
-    st.text_area("Descrizione Finale:", descrizione, height=200)
+    brand = colA.text_input("Brand")
+    tipo = colB.text_input("Tipo")
+    if st.button("Genera Scheda PDF"):
+        pdf_data = genera_pdf(brand, tipo, "0.00")
+        st.download_button("📥 Scarica PDF Tecnico", pdf_data, "scheda_prodotto.pdf")
 
-# TAB 3: BUSINESS
 with tab3:
-    st.header("💰 Business Intelligence")
-    c1, c2, c3, c4 = st.columns(4)
-    costo_base = c1.number_input("Costo Acquisto (€)", 0.0)
-    spese = c2.number_input("Spese extra (€)", 0.0)
-    comm = c3.number_input("Commissioni Vinted (%)", 0.0, 15.0, 5.0)
-    prezzo_vendita = c4.number_input("Prezzo vendita finale (€)", 0.0)
+    st.header("💰 Gestione Finanziaria Industriale")
+    c1, c2 = st.columns(2)
+    prezzo = c1.number_input("Prezzo Vendita (€)", 0.0)
+    costo = c2.number_input("Costo Acquisto (€)", 0.0)
     
-    profitto = calcola_netto(prezzo_vendita, (costo_base + spese), comm)
-    st.metric("Margine Netto Reale", f"€ {profitto:.2f}")
-    
-    if st.button("➕ SALVA ARTICOLO"):
-        nuovo = pd.DataFrame([[len(st.session_state.inventario)+1, datetime.now().strftime("%d-%m-%Y"), brand, tipo, taglia, condizioni, costo_base, prezzo_vendita, profitto, "In Vendita"]], 
-                             columns=st.session_state.inventario.columns)
-        st.session_state.inventario = pd.concat([st.session_state.inventario, nuovo], ignore_index=True)
-        salva_db()
-        st.success("Salvato nel DB!")
+    if st.button("💾 Registra Transazione"):
+        session = Session()
+        new_p = Prodotto(brand=brand, tipo=tipo, prezzo_vendita=prezzo, 
+                         costo_base=costo, profitto=(prezzo-costo))
+        session.add(new_p)
+        session.commit()
+        session.close()
+        logging.info(f"Salvataggio eseguito: {brand} | Profitto: {prezzo-costo}")
+        st.success("Transazione salvata e loggata nel sistema.")
 
-# TAB 4: GESTIONE INVENTARIO
 with tab4:
-    st.header("📦 Gestione Inventario & Trend")
-    st.session_state.inventario = st.data_editor(st.session_state.inventario, use_container_width=True)
-    if st.button("💾 Salva modifiche"):
-        salva_db()
-        st.rerun()
+    st.header("📦 Inventario Enterprise (SQL Database)")
+    session = Session()
+    df = pd.read_sql(session.query(Prodotto).statement, session.bind)
+    st.dataframe(df, use_container_width=True)
     
-    if not st.session_state.inventario.empty:
-        st.altair_chart(alt.Chart(st.session_state.inventario).mark_bar().encode(x='Data', y='Profitto Netto (€)', color='Tipo'), use_container_width=True)
+    if st.button("📊 Esporta Report CSV"):
+        df.to_csv("report_finale.csv", index=False)
+        st.info("File 'report_finale.csv' generato nella cartella locale.")
+    session.close()
+
+# Footer di sistema
+st.sidebar.markdown("---")
+st.sidebar.write("🟢 **Stato Sistema:** Online")
+st.sidebar.write("💾 **Database:** SQLite Attivo")
+st.sidebar.write("⚙️ **Log:** `vinted_pro.log` attivo")
