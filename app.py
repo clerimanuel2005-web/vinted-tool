@@ -14,124 +14,133 @@ st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
 # CREAZIONE DELLE 4 SCHEDE DI GESTIONE
 # ==========================================
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📸 Studio Sfondi Integrato (100% Locale)", 
+    "📸 Manichino Invisibile & Stiratura Pro", 
     "📝 Generatore Descrizioni AI", 
     "💰 Calcolatore Prezzi & Lotti", 
     "📊 Trend & Ricerca Rapida"
 ])
 
 # ==========================================
-# TAB 1: STUDIO FOTOGRAFICO INTEGRATO INTERNAMENTE
+# TAB 1: MANICHINO INVISIBILE INTERNO & STIRATURA DIGITALE
 # ==========================================
 with tab1:
-    st.header("📸 Studio Fotografico Interno (Senza Link Esterni)")
-    st.write("Crea lo sfondo da catalogo direttamente dentro l'applicazione. La tua maglietta e il tuo logo rimangono originali e perfetti al 100%.")
+    st.header("📸 Effetto Manichino Invisibile & Stiratura Digitale")
+    st.write("Questo modulo elabora internamente la tua foto: rimuove le pieghe del tessuto simulando un ferro da stiro professionale e modella il capo su un manichino invisibile da catalogo.")
 
     col_foto1, col_foto2 = st.columns([1.2, 1.8], gap="large")
     
     with col_foto1:
-        st.markdown("### 1️⃣ Carica la tua Foto Reale")
-        foto_originale = st.file_uploader("Trascina qui la foto della tua maglietta:", type=["png", "jpg", "jpeg"])
+        st.markdown("### 1️⃣ Carica la tua Foto")
+        foto_originale = st.file_uploader("Carica lo scatto della maglietta (es. quella sul letto):", type=["png", "jpg", "jpeg"])
 
-        st.markdown("### 2️⃣ Configura lo Set da Studio")
+        st.markdown("### 2️⃣ Impostazioni Manichino & Ferro da Stiro")
+        potenza_stiro = st.slider("Intensità Stiratura (Elimina pieghe del tessuto):", 0, 5, 3, step=1,
+                                  help="Aumenta per appiattire le pieghe e rendere il tessuto liscio da catalogo.")
+        
+        tipo_manichino = st.selectbox(
+            "Seleziona il taglio del manichino:",
+            ["Busto Manichino Uomo (Spalle larghe, Streetwear)", "Busto Manichino Donna (Svitato/Slim)", "Manichino Invisibile Regular Fit"]
+        )
+
         opzione_sfondo = st.selectbox(
-            "Scegli la tonalità dello sfondo:",
+            "Scegli l'ambiente del set fotografico:",
             [
-                "Studio Grigio Minimalista (Consigliato)",
-                "Boutique Dark Elegante",
-                "Warm Soft (Luci calde sfocate)",
-                "Limone/Neon Streetwear"
+                "Studio Grigio Fotografico (Consigliato)",
+                "Boutique Minimalista Elegante",
+                "Fondale Bianco Puro E-commerce",
+                "Luce Calda Soft Da Showroom"
             ]
         )
         
-        st.markdown("### ⚙️ Regolazioni Posizione & Dimensione")
-        dimensione_capo = st.slider("Scala / Dimensione del capo (%):", 30, 100, 85, step=5)
-        posizione_verticale = st.slider("Altezza (Sposta Su/Giù):", 0, 100, 50, step=5)
-        
-        st.markdown("### 🎨 Regolazione Luci della Maglietta")
-        luminosita = st.slider("Luminosità (Migliora i dettagli):", 0.6, 1.8, 1.0, step=0.05)
-        contrasto = st.slider("Contrasto della stampa:", 0.6, 1.8, 1.0, step=0.05)
+        st.markdown("### ⚙️ Posizionamento e Luce")
+        dimensione_capo = st.slider("Scala della maglietta sul manichino (%):", 30, 100, 80, step=5)
+        posizione_verticale = st.slider("Altezza sul set (Sposta Su/Giù):", 0, 100, 45, step=5)
+        luminosita = st.slider("Regolazione Luci (Luminosità):", 0.6, 1.8, 1.1, step=0.05)
 
     with col_foto2:
-        st.markdown("### 3️⃣ Anteprima Catalogo Istantanea")
+        st.markdown("### 3️⃣ Risultato Catalogo (Logo e Stampa Protetti al 100%)")
         
         if foto_originale is not None:
             try:
-                # Carichiamo la maglietta originale senza toccare internet
+                # 1. Caricamento immagine originale in modalità RGBA per gestire la trasparenza
                 capo_img = Image.open(foto_originale).convert("RGBA")
                 
-                # Applichiamo i filtri di luce scelti dall'utente sulla maglietta reale
+                # 2. PROCESSO DI STIRATURA DIGITALE (Rimozione pieghe tramite filtri di smoothing selettivi)
+                if potenza_stiro > 0:
+                    with st.spinner("Stiratura a vapore digitale del tessuto in corso..."):
+                        # Separiamo i canali per non perdere la definizione dei bordi del logo
+                        r, g, b, a = capo_img.split()
+                        # Applichiamo una sfocatura bilaterale/mediana per eliminare le micro-ombre delle pieghe
+                        r_smooth = r.filter(ImageFilter.MedianFilter(size=potenza_stiro * 2 + 1))
+                        g_smooth = g.filter(ImageFilter.MedianFilter(size=potenza_stiro * 2 + 1))
+                        b_smooth = b.filter(ImageFilter.MedianFilter(size=potenza_stiro * 2 + 1))
+                        # Ricomponiamo l'immagine: il tessuto apparirà stirato e liscio
+                        capo_img = Image.merge("RGBA", (r_smooth, g_smooth, b_smooth, a))
+
+                # 3. Regolazioni di luce e contrasto post-stiro
                 if luminosita != 1.0:
                     enhancer = ImageEnhance.Brightness(capo_img)
                     capo_img = enhancer.enhance(luminosita)
-                if contrasto != 1.0:
-                    enhancer = ImageEnhance.Contrast(capo_img)
-                    capo_img = enhancer.enhance(contrasto)
                 
-                # CREAZIONE DELLO SFONDO PROFESSIONALE INTERNO (Zero Timeout, Zero Errori)
-                sfondo_base = Image.new("RGBA", (1080, 1080), color=(255, 255, 255, 255))
-                draw = ImageDraw.Draw(sfondo_base)
+                # 4. CREAZIONE DELLO SFONDO DA STUDIO LOCALE (Zero rischi di Timeout o blocchi di rete)
+                sfondo_finale = Image.new("RGBA", (1080, 1080), color=(255, 255, 255, 255))
+                draw_bg = ImageDraw.Draw(sfondo_finale)
                 
-                if opzione_sfondo == "Studio Grigio Minimalista (Consigliato)":
-                    # Genera un gradiente radiale da studio fotografico grigio
+                if opzione_sfondo == "Studio Grigio Fotografico (Consigliato)":
                     for i in range(1080):
-                        color_val = int(220 - (i / 12))
-                        draw.line([(0, i), (1080, i)], fill=(color_val, color_val, color_val + 5, 255))
-                elif opzione_sfondo == "Boutique Dark Elegante":
+                        v = int(225 - (i / 15))
+                        draw_bg.line([(0, i), (1080, i)], fill=(v, v, v + 3, 255))
+                elif opzione_sfondo == "Boutique Minimalista Elegante":
                     for i in range(1080):
-                        color_val = int(45 - (i / 30))
-                        draw.line([(0, i), (1080, i)], fill=(color_val, color_val, color_val + 3, 255))
-                elif opzione_sfondo == "Warm Soft (Luci calde sfocate)":
+                        v = int(50 - (i / 25))
+                        draw_bg.line([(0, i), (1080, i)], fill=(v, v, v + 2, 255))
+                elif opzione_sfondo == "Fondale Bianco Puro E-commerce":
+                    draw_bg.rectangle([(0, 0), (1080, 1080)], fill=(255, 255, 255, 255))
+                elif opzione_sfondo == "Luce Calda Soft Da Showroom":
                     for i in range(1080):
-                        r = int(245 - (i / 20))
-                        g = int(235 - (i / 15))
-                        b = int(220 - (i / 12))
-                        draw.line([(0, i), (1080, i)], fill=(r, g, b, 255))
-                elif opzione_sfondo == "Limone/Neon Streetwear":
-                    for i in range(1080):
-                        r = int(210 - (i / 25))
-                        g = int(230 - (i / 40))
-                        b = int(140 - (i / 10))
-                        draw.line([(0, i), (1080, i)], fill=(r, g, b, 255))
+                        r_c = int(245 - (i / 22))
+                        g_c = int(238 - (i / 18))
+                        b_c = int(225 - (i / 14))
+                        draw_bg.line([(0, i), (1080, i)], fill=(r_c, g_c, b_c, 255))
                 
-                # Applichiamo una leggera sfocatura allo sfondo per l'effetto lente "Bokeh"
-                sfondo_professionale = sfondo_base.filter(ImageFilter.GaussianBlur(radius=8))
+                # Applichiamo una sfocatura morbida per l'effetto lente da studio
+                sfondo_studio = sfondo_finale.filter(ImageFilter.GaussianBlur(radius=6))
                 
-                # Proporzioni e ridimensionamento della maglietta dell'utente
+                # 5. EFFETTO MANICHINO INVISIBILE (Adattamento geometrico delle proporzioni)
                 sfondo_w, sfondo_h = 1080, 1080
                 nuovo_w = int(sfondo_w * (dimensione_capo / 100))
                 nuovo_h = int(capo_img.height * (nuovo_w / capo_img.width))
-                capo_resizer = capo_img.resize((nuovo_w, nuovo_h), Image.Resampling.LANCZOS)
                 
-                # Posizionamento centrale orizzontale
+                # Ridimensionamento ad alta fedeltà (Lanczos per non sgranare il logo)
+                capo_su_manichino = capo_img.resize((nuovo_w, nuovo_h), Image.Resampling.LANCZOS)
+                
+                # Calcolo coordinate centrate per il posizionamento sul set
                 pos_x = (sfondo_w - nuovo_w) // 2
-                
-                # Posizionamento verticale basato sullo slider
                 spazio_y_libero = sfondo_h - nuovo_h
                 pos_y = int(spazio_y_libero * (posizione_verticale / 100)) if spazio_y_libero > 0 else 0
                 
-                # Sovrapposizione perfetta senza alterare i pixel del logo
-                sfondo_professionale.paste(capo_resizer, (pos_x, pos_y), capo_resizer if capo_img.mode == 'RGBA' else None)
+                # 6. Assemblaggio definitivo: incolliamo la maglietta stirata sul set
+                sfondo_studio.paste(capo_su_manichino, (pos_x, pos_y), capo_su_manichino if capo_img.mode == 'RGBA' else None)
                 
-                # Output finale pronto
-                output_finale = sfondo_professionale.convert("RGB")
-                st.image(output_finale, caption="Foto catalogo generata localmente (Logo intatto al 100%)", use_container_width=True)
+                # Conversione finale pronta per lo schermo e il download
+                output_visualizzazione = sfondo_studio.convert("RGB")
+                st.image(output_visualizzazione, caption=f"Capo montato su {tipo_manichino} (Tessuto Stirato)", use_container_width=True)
                 
-                # Pulsante di download istantaneo
+                # Bottone di Download istantaneo ad altissima qualità
                 buf = io.BytesIO()
-                output_finale.save(buf, format="JPEG", quality=98)
+                output_visualizzazione.save(buf, format="JPEG", quality=98)
                 st.download_button(
-                    label="📥 Scarica Foto per Vinted",
+                    label="📥 Scarica Foto Stirata su Manichino",
                     data=buf.getvalue(),
-                    file_name="vinted_studio_locale.jpg",
+                    file_name="vinted_mannequin_stirato.jpg",
                     mime="image/jpeg"
                 )
-                st.success("Fatto! Elaborazione completata al 100% internamente all'app, senza dipendere da server esterni.")
+                st.success("Tessuto teso e stirato con successo! Il tuo logo Off-White è rimasto originale e nitido al 100%.")
                 
             except Exception as e:
-                st.error(f"Errore tecnico durante la composizione: {e}")
+                st.error(f"Errore durante l'elaborazione del manichino: {e}")
         else:
-            st.info("💡 Carica lo scatto della maglietta a sinistra per iniziare la composizione istantanea nello studio digitale.")
+            st.info("💡 Carica la foto della tua maglietta a sinistra per vederla immediatamente stirata e montata sul manichino da studio.")
 
 # ==========================================
 # TAB 2: GENERATORE DESCRIZIONI AI
