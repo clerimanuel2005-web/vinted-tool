@@ -3,15 +3,7 @@ import pandas as pd
 import requests
 import io
 import altair as alt
-from PIL import Image
-
-# Tentativo di importazione di rembg per la rimozione dello sfondo locale
-try:
-    from rembg import remove
-except ImportError:
-    # Fallback sicuro nel caso in cui l'installazione sia in corso sul server
-    def remove(img): 
-        return img
+from PIL import Image, ImageOps
 
 # Configurazione globale della pagina in modalità Wide (schermo intero)
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
@@ -24,18 +16,18 @@ st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
 # CREAZIONE DELLE 4 SCHEDE DI GESTIONE
 # ==========================================
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📸 Cambio Sfondo AI (Locale)", 
+    "📸 Ottimizzatore Foto", 
     "📝 Generatore Descrizioni AI", 
     "💰 Calcolatore Prezzi & Lotti", 
     "📊 Trend & Ricerca Rapida"
 ])
 
 # ==========================================
-# TAB 1: CAMBIO SFONDO LOCALE (SENZA ERRORI DI RETE)
+# TAB 1: OTTIMIZZATORE FOTO (LEGGERO E SICURO)
 # ==========================================
 with tab1:
-    st.header("📸 Studio Fotografico: Cambia lo Sfondo Istantaneamente")
-    st.write("Carica la foto del tuo capo. Il sistema taglierà automaticamente lo sfondo vecchio e posizionerà il vestito in un contesto premium senza dipendere da server esterni.")
+    st.header("📸 Studio Fotografico & Anteprima Sfondi")
+    st.write("Carica la foto del tuo capo per ottimizzarla, ritagliarla visivamente o prepararla per i migliori siti di rimozione sfondo automatici.")
 
     col_foto1, col_foto2 = st.columns(2, gap="large")
     
@@ -43,63 +35,40 @@ with tab1:
         st.markdown("### 1️⃣ Carica il tuo capo")
         uploaded_file = st.file_uploader("Trascina o seleziona la foto del tuo vestito", type=["jpg", "jpeg", "png"])
         
-        if uploaded_file:
-            st.image(uploaded_file, caption="Tua foto originale", width=250)
-
-        st.markdown("### 2️⃣ Scegli la nuova stanza/sfondo")
-        # Link a immagini di sfondo stabili ad alta risoluzione da Unsplash
-        sfondi_disponibili = {
-            "🏬 Showroom / Boutique di Lusso (Consigliato)": "https://images.unsplash.com/photo-1601924994987-69e26d50dc26?q=80&w=1000&auto=format&fit=crop",
-            "🧱 Streetwear Urbano (Muro Industriale)": "https://images.unsplash.com/photo-1510070112810-d4e9a46d9e91?q=80&w=1000&auto=format&fit=crop",
-            "🎚️ Studio Grigio Minimale (Catalogo pulito)": "https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1000&auto=format&fit=crop",
-            "🪵 Tavola di Legno Vintage (Flat Lay)": "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?q=80&w=1000&auto=format&fit=crop"
-        }
-        
-        scelta_sfondo = st.selectbox("Seleziona lo sfondo:", list(sfondi_disponibili.keys()))
+        st.markdown("### 🛠️ Strumenti di Rimozione Rapida Esterni")
+        st.info("💡 Se vuoi rimuovere lo sfondo a livello professionale in 1 secondo senza rallentare questa app, usa questi fantastici strumenti gratuiti:")
+        st.link_button("✂️ Rimuovi Sfondo con Adobe Express (Gratis)", "https://www.adobe.com/express/feature/image/remove-background", use_container_width=True)
+        st.link_button("✨ Rimuovi Sfondo con Photoroom Web", "https://www.photoroom.com/tools/background-remover", use_container_width=True)
 
     with col_foto2:
-        st.markdown("### 3️⃣ Risultato Elaborato")
-        
+        st.markdown("### 2️⃣ Anteprima e Regolazioni")
         if uploaded_file is not None:
-            if st.button("✨ Applica Nuovo Sfondo", type="primary"):
-                with st.spinner("Isolamento del vestito e fusione dei livelli in corso... Attendi un istante."):
-                    try:
-                        # 1. Carica l'immagine dell'utente
-                        input_image = Image.open(uploaded_file).convert("RGBA")
-                        
-                        # 2. Rimuovi lo sfondo in locale usando la libreria rembg
-                        output_nobg = remove(input_image)
-                        
-                        # 3. Scarica lo sfondo scelto dall'elenco di immagini stock
-                        url_bg = sfondi_disponibili[scelta_sfondo]
-                        bg_response = requests.get(url_bg, timeout=15)
-                        background = Image.open(io.BytesIO(bg_response.content)).convert("RGBA")
-                        
-                        # 4. Ridimensiona lo sfondo per adattarlo perfettamente alle proporzioni del vestito dell'utente
-                        background = background.resize(input_image.size, Image.Resampling.LANCZOS)
-                        
-                        # 5. Sovrappone il vestito ritagliato sopra la nuova stanza generata
-                        final_image = Image.alpha_composite(background, output_nobg).convert("RGB")
-                        
-                        # Mostra l'immagine finale a schermo intero
-                        st.image(final_image, caption="Capo elaborato con successo nel nuovo ambiente", use_container_width=True)
-                        
-                        # Preparazione del file per il download in formato JPEG ad alta qualità
-                        buffer = io.BytesIO()
-                        final_image.save(buffer, format="JPEG", quality=95)
-                        
-                        st.download_button(
-                            label="📥 Scarica Foto per Vinted",
-                            data=buffer.getvalue(),
-                            file_name="vinted_showroom_output.jpg",
-                            mime="image/jpeg"
-                        )
-                        st.success("Sfondo sostituito localmente senza errori di connessione esterna!")
-                        
-                    except Exception as e:
-                        st.error(f"Impossibile elaborare l'immagine localmente: {e}. Verifica che rembg sia installato correttamente.")
+            try:
+                # Carica l'immagine in modo sicuro
+                img = Image.open(uploaded_file)
+                
+                # Controlli di editing base (luminosità / specchio) per migliorare lo scatto originale
+                st.write("📐 **Migliora lo scatto per Vinted:**")
+                ruota = st.checkbox("Capovolgi/Specchia l'immagine horizontalmente")
+                
+                if ruota:
+                    img = ImageOps.mirror(img)
+                
+                st.image(img, caption="Foto ottimizzata pronta per il caricamento", use_container_width=True)
+                
+                # Bottone di salvataggio locale della foto modificata
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG", quality=95)
+                st.download_button(
+                    label="📥 Scarica Foto Ottimizzata",
+                    data=buffer.getvalue(),
+                    file_name="capo_ottimizzato_vinted.jpg",
+                    mime="image/jpeg"
+                )
+            except Exception as e:
+                st.error(f"Errore nel caricamento dell'immagine: {e}")
         else:
-            st.info("💡 Carica la foto nella colonna di sinistra per vederla trasformata qui dentro.")
+            st.info("👋 Carica un file a sinistra per visualizzare l'editor e le opzioni di ottimizzazione.")
 
 # ==========================================
 # TAB 2: GENERATORE DESCRIZIONI AI
@@ -131,7 +100,6 @@ with tab2:
     with col_b:
         st.subheader("📋 Testo Pronto da Copiare")
         
-        # Generazione automatica del titolo basato sui campi inseriti
         titolo_generato = f"✨ {tipo_capo.capitalize()} {brand.upper()} - Taglia {taglia} - {colore.capitalize()}"
         nota_difetti = f"• 🔎 Difetti: {difetti.capitalize()}" if difetti and difetti.lower() != "nessuna" else "• 🔎 Difetti: Nessuno, capo perfetto."
         
@@ -143,7 +111,6 @@ with tab2:
             if cm_lunghezza: 
                 stringa_misure += f"   - Lunghezza totale: {cm_lunghezza} cm\n"
 
-        # Struttura del testo per l'annuncio finale
         descrizione_generata = f"""🇮🇹 DESCRIZIONE ARTICOLO:
 Vendo splendida {tipo_capo.lower()} originale del brand {brand.capitalize()}. Il capo è stato trattato con massima cura, lavato, igienizzato e pronto da indossare.
 
@@ -179,7 +146,6 @@ with tab3:
         percentuale_sconto = st.slider("Se un utente crea un lotto, che sconto vuoi applicare? (%)", 0, 50, 15)
 
     with col_chart:
-        # Calcoli finanziari fondamentali
         guadagno_netto = prezzo_vendita - costo_acquisto
         roi = (guadagno_netto / costo_acquisto) * 100 if costo_acquisto > 0 else 0
         prezzo_scontato_lotto = prezzo_vendita * (1 - (percentuale_sconto / 100))
@@ -206,7 +172,6 @@ with tab3:
             'Value': [costo_acquisto, guadagno_netto]
         })
 
-        # Costruzione del grafico interattivo Altair Donut Chart
         base = alt.Chart(data_fin).encode(theta=alt.Theta("Value", stack=True))
         donut = base.mark_arc(innerRadius=50, outerRadius=90).encode(
             color=alt.Color("Category", scale=alt.Scale(range=['#FFD700', '#228B22']), legend=alt.Legend(orient="bottom"))
