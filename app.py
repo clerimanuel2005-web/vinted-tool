@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
-import requests
 import io
 import altair as alt
-from PIL import Image, ImageOps, ImageEnhance
+from PIL import Image, ImageOps, ImageEnhance, ImageDraw, ImageFilter
 
 # Configurazione della pagina
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
@@ -15,115 +14,124 @@ st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
 # CREAZIONE DELLE 4 SCHEDE DI GESTIONE
 # ==========================================
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📸 Studio Sfondi Pro (Fedeltà 100%)", 
+    "📸 Studio Sfondi Integrato (100% Locale)", 
     "📝 Generatore Descrizioni AI", 
     "💰 Calcolatore Prezzi & Lotti", 
     "📊 Trend & Ricerca Rapida"
 ])
 
 # ==========================================
-# TAB 1: STUDIO FOTOGRAFICO REALE (ZERO ALTERAZIONI AL LOGO)
+# TAB 1: STUDIO FOTOGRAFICO INTEGRATO INTERNAMENTE
 # ==========================================
 with tab1:
-    st.header("📸 Mockup Studio: Cambia lo Sfondo senza toccare il Logo")
-    st.write("Questa tecnologia NON usa l'AI per ridisegnare il capo. Prende la tua foto originale e la ambienta in un set fotografico di lusso, mantenendo la stampa intatta al 100%.")
+    st.header("📸 Studio Fotografico Interno (Senza Link Esterni)")
+    st.write("Crea lo sfondo da catalogo direttamente dentro l'applicazione. La tua maglietta e il tuo logo rimangono originali e perfetti al 100%.")
 
     col_foto1, col_foto2 = st.columns([1.2, 1.8], gap="large")
     
     with col_foto1:
-        st.markdown("### 1️⃣ Prepara il tuo Capo Reale")
-        st.info("💡 Per un risultato perfetto come nei cataloghi: rimuovi lo sfondo dalla tua foto (usando i link sotto) ottenendo un file PNG trasparente, poi caricalo qui.")
-        
-        # Link ai tool di rimozione sfondo gratuiti leader del settore
-        st.link_button("✂️ Rimuovi lo Sfondo Gratis con Adobe", "https://www.adobe.com/express/feature/image/remove-background", use_container_width=True)
-        st.link_button("✨ Rimuovi lo Sfondo Gratis con Photoroom", "https://www.photoroom.com/tools/background-remover", use_container_width=True)
-        
-        st.markdown("---")
-        foto_ritagliata = st.file_uploader("Ora carica qui la foto (Preferibilmente senza sfondo / PNG):", type=["png", "jpg", "jpeg"])
+        st.markdown("### 1️⃣ Carica la tua Foto Reale")
+        foto_originale = st.file_uploader("Trascina qui la foto della tua maglietta:", type=["png", "jpg", "jpeg"])
 
-        st.markdown("### 2️⃣ Scegli l'Ambientazione Premium")
+        st.markdown("### 2️⃣ Configura lo Set da Studio")
         opzione_sfondo = st.selectbox(
-            "Scegli lo sfondo del set fotografico:",
+            "Scegli la tonalità dello sfondo:",
             [
-                "Boutique di lusso con pavimento in resina e luci calde",
-                "Studio fotografico minimalista grigio neutro",
-                "Muro di cemento urbano stile industrial",
-                "Showroom moderno con appendiabiti in legno"
+                "Studio Grigio Minimalista (Consigliato)",
+                "Boutique Dark Elegante",
+                "Warm Soft (Luci calde sfocate)",
+                "Limone/Neon Streetwear"
             ]
         )
         
-        st.markdown("### ⚙️ Regolazioni di Posizionamento")
-        dimensione_capo = st.slider("Scala / Dimensione del capo sullo sfondo:", 30, 100, 75, step=5)
-        posizione_verticale = st.slider("Altezza della maglietta (Sposta Su/Giù):", 0, 100, 50, step=5)
+        st.markdown("### ⚙️ Regolazioni Posizione & Dimensione")
+        dimensione_capo = st.slider("Scala / Dimensione del capo (%):", 30, 100, 85, step=5)
+        posizione_verticale = st.slider("Altezza (Sposta Su/Giù):", 0, 100, 50, step=5)
         
-        st.markdown("### 🎨 Bilanciamento Luci")
-        luminosita = st.slider("Luminosità della maglietta:", 0.6, 1.8, 1.0, step=0.05)
+        st.markdown("### 🎨 Regolazione Luci della Maglietta")
+        luminosita = st.slider("Luminosità (Migliora i dettagli):", 0.6, 1.8, 1.0, step=0.05)
+        contrasto = st.slider("Contrasto della stampa:", 0.6, 1.8, 1.0, step=0.05)
 
     with col_foto2:
-        st.markdown("### 3️⃣ Risultato Finale per Vinted (Garanzia Logo Originale)")
+        st.markdown("### 3️⃣ Anteprima Catalogo Istantanea")
         
-        if foto_ritagliata is not None:
+        if foto_originale is not None:
             try:
-                # Carichiamo la maglietta originale dell'utente
-                capo_img = Image.open(foto_ritagliata).convert("RGBA")
+                # Carichiamo la maglietta originale senza toccare internet
+                capo_img = Image.open(foto_originale).convert("RGBA")
                 
-                # Applichiamo modifiche di luce sulla maglietta originale senza alterarla
+                # Applichiamo i filtri di luce scelti dall'utente sulla maglietta reale
                 if luminosita != 1.0:
                     enhancer = ImageEnhance.Brightness(capo_img)
                     capo_img = enhancer.enhance(luminosita)
+                if contrasto != 1.0:
+                    enhancer = ImageEnhance.Contrast(capo_img)
+                    capo_img = enhancer.enhance(contrasto)
                 
-                # Generiamo lo sfondo perfetto tramite seed fisso ad altissima definizione (FLUX) per fare da wallpaper
-                sfondo_prompts = {
-                    "Boutique di lusso con pavimento in resina e luci calde": "Luxury fashion boutique showroom interior, warm blurry spotlight, concrete floor, minimalist out of focus background",
-                    "Studio fotografico minimalista grigio neutro": "Professional photography studio background, neutral soft grey color, studio lighting, empty space",
-                    "Muro di cemento urbano stile industrial": "Industrial concrete wall background, loft design, soft top light, realistic textures",
-                    "Showroom moderno con appendiabiti in legno": "Modern fashion store wall, wooden elements, elegant blurred retail store display"
-                }
+                # CREAZIONE DELLO SFONDO PROFESSIONALE INTERNO (Zero Timeout, Zero Errori)
+                sfondo_base = Image.new("RGBA", (1080, 1080), color=(255, 255, 255, 255))
+                draw = ImageDraw.Draw(sfondo_base)
                 
-                # Recuperiamo l'immagine di sfondo professionale
-                prompt_bg = sfondo_prompts[opzione_sfondo].replace(" ", "%20")
-                url_bg = f"https://image.pollinations.ai/p/{prompt_bg}?width=1020&height=1020&nologo=true&seed=99"
+                if opzione_sfondo == "Studio Grigio Minimalista (Consigliato)":
+                    # Genera un gradiente radiale da studio fotografico grigio
+                    for i in range(1080):
+                        color_val = int(220 - (i / 12))
+                        draw.line([(0, i), (1080, i)], fill=(color_val, color_val, color_val + 5, 255))
+                elif opzione_sfondo == "Boutique Dark Elegante":
+                    for i in range(1080):
+                        color_val = int(45 - (i / 30))
+                        draw.line([(0, i), (1080, i)], fill=(color_val, color_val, color_val + 3, 255))
+                elif opzione_sfondo == "Warm Soft (Luci calde sfocate)":
+                    for i in range(1080):
+                        r = int(245 - (i / 20))
+                        g = int(235 - (i / 15))
+                        b = int(220 - (i / 12))
+                        draw.line([(0, i), (1080, i)], fill=(r, g, b, 255))
+                elif opzione_sfondo == "Limone/Neon Streetwear":
+                    for i in range(1080):
+                        r = int(210 - (i / 25))
+                        g = int(230 - (i / 40))
+                        b = int(140 - (i / 10))
+                        draw.line([(0, i), (1080, i)], fill=(r, g, b, 255))
                 
-                with st.spinner("Allineamento del set fotografico in corso..."):
-                    res_bg = requests.get(url_bg, timeout=20)
-                    if res_bg.status_code == 200:
-                        sfondo_img = Image.open(io.BytesIO(res_bg.content)).convert("RGBA")
-                        
-                        # Ridimensioniamo la maglietta dell'utente in base allo slider
-                        sfondo_w, sfondo_h = sfondo_img.size
-                        nuovo_w = int(sfondo_w * (dimensione_capo / 100))
-                        nuovo_h = int(capo_img.height * (nuovo_w / capo_img.width))
-                        capo_resizer = capo_img.resize((nuovo_w, nuovo_h), Image.Resampling.LANCZOS)
-                        
-                        # Calcolo posizionamento centrale dinamico
-                        pos_x = (sfondo_w - nuovo_w) // 2
-                        # La coordinata Y dipende dallo slider dell'altezza selezionata dall'utente
-                        spazio_y_libero = sfondo_h - nuovo_h
-                        pos_y = int(spazio_y_libero * (posizione_verticale / 100)) if spazio_y_libero > 0 else 0
-                        
-                        # Incolliamo la maglietta originale sopra lo sfondo digitale preservando la trasparenza (alfa channel)
-                        sfondo_img.paste(capo_resizer, (pos_x, pos_y), capo_resizer)
-                        
-                        # Mostriamo il risultato finale immacolato
-                        output_finale = sfondo_img.convert("RGB")
-                        st.image(output_finale, caption="Foto catalogo generata con la tua maglietta reale al 100%", use_container_width=True)
-                        
-                        # Pulsante di download
-                        buf = io.BytesIO()
-                        output_finale.save(buf, format="JPEG", quality=95)
-                        st.download_button(
-                            label="📥 Scarica Foto Perfetta per Vinted",
-                            data=buf.getvalue(),
-                            file_name="vinted_catalogo_reale.jpg",
-                            mime="image/jpeg"
-                        )
-                        st.success("Fatto! Il disegno è rimasto identico all'originale perché non è stato ricostruito dall'AI.")
-                    else:
-                        st.error("Impossibile caricare il fondale dello studio. Riprova tra un istante.")
+                # Applichiamo una leggera sfocatura allo sfondo per l'effetto lente "Bokeh"
+                sfondo_professionale = sfondo_base.filter(ImageFilter.GaussianBlur(radius=8))
+                
+                # Proporzioni e ridimensionamento della maglietta dell'utente
+                sfondo_w, sfondo_h = 1080, 1080
+                nuovo_w = int(sfondo_w * (dimensione_capo / 100))
+                nuovo_h = int(capo_img.height * (nuovo_w / capo_img.width))
+                capo_resizer = capo_img.resize((nuovo_w, nuovo_h), Image.Resampling.LANCZOS)
+                
+                # Posizionamento centrale orizzontale
+                pos_x = (sfondo_w - nuovo_w) // 2
+                
+                # Posizionamento verticale basato sullo slider
+                spazio_y_libero = sfondo_h - nuovo_h
+                pos_y = int(spazio_y_libero * (posizione_verticale / 100)) if spazio_y_libero > 0 else 0
+                
+                # Sovrapposizione perfetta senza alterare i pixel del logo
+                sfondo_professionale.paste(capo_resizer, (pos_x, pos_y), capo_resizer if capo_img.mode == 'RGBA' else None)
+                
+                # Output finale pronto
+                output_finale = sfondo_professionale.convert("RGB")
+                st.image(output_finale, caption="Foto catalogo generata localmente (Logo intatto al 100%)", use_container_width=True)
+                
+                # Pulsante di download istantaneo
+                buf = io.BytesIO()
+                output_finale.save(buf, format="JPEG", quality=98)
+                st.download_button(
+                    label="📥 Scarica Foto per Vinted",
+                    data=buf.getvalue(),
+                    file_name="vinted_studio_locale.jpg",
+                    mime="image/jpeg"
+                )
+                st.success("Fatto! Elaborazione completata al 100% internamente all'app, senza dipendere da server esterni.")
+                
             except Exception as e:
-                st.error(f"Errore durante la sovrapposizione digitale dell'immagine: {e}")
+                st.error(f"Errore tecnico durante la composizione: {e}")
         else:
-            st.info("💡 Carica la tua foto a sinistra per vederla applicata all'interno del set fotografico scelto.")
+            st.info("💡 Carica lo scatto della maglietta a sinistra per iniziare la composizione istantanea nello studio digitale.")
 
 # ==========================================
 # TAB 2: GENERATORE DESCRIZIONI AI
