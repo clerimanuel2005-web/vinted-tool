@@ -3,105 +3,153 @@ import pandas as pd
 import requests
 import io
 import random
-import cv2
-import numpy as np
 from PIL import Image, ImageFilter, ImageOps, ImageEnhance
+from rembg import remove, new_session
 
-# 1. CONFIGURAZIONE PAGINA
+# 1. CONFIGURAZIONE DELLA PAGINA
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
 
-# Funzione GrabCut: Segmentazione basata sulla geometria, non sull'AI
-def extract_tshirt_grabcut(pil_img):
-    img = np.array(pil_img.convert("RGB"))
-    img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    mask = np.zeros(img_bgr.shape[:2], np.uint8)
-    bgdModel = np.zeros((1, 65), np.float64)
-    fgdModel = np.zeros((1, 65), np.float64)
-    h, w = img_bgr.shape[:2]
-    # GrabCut: isola l'oggetto centrale
-    rect = (20, 20, w - 40, h - 40)
-    cv2.grabCut(img_bgr, mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_RECT)
-    mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
-    img_final = img_bgr * mask2[:, :, np.newaxis]
-    img_rgba = cv2.cvtColor(img_final, cv2.COLOR_BGR2RGBA)
-    img_rgba[mask2 == 0] = [0, 0, 0, 0]
-    return Image.fromarray(img_rgba)
+# Inizializzazione sessioni in cache
+if "session_standard" not in st.session_state:
+    st.session_state.session_standard = new_session(model_name="u2net")
 
+# Titolo principale
 st.title("🛍️ Vinted Power Seller Suite")
-st.write("L'hub completo per gestire il tuo business su Vinted.")
+st.write("L'hub definitivo per ottimizzare le foto dei tuoi capi, calcolare i margini e scrivere annunci perfetti.")
 
-tab1, tab2, tab3, tab4 = st.tabs(["📸 Manichino AI", "📝 Annunci", "💰 Prezzi", "📊 Trend"])
+# ==========================================
+# CREAZIONE DELLE SCHEDE DI NAVIGAZIONE
+# ==========================================
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📸 Manichino AI & Ultra HD", 
+    "📝 Generatore Descrizioni AI", 
+    "💰 Calcolatore Prezzi & Lotti", 
+    "📊 Trend di Mercato"
+])
 
-# TAB 1: MANICHINO AI (GrabCut + Composizione HD)
+# ==========================================
+# TAB 1: RIMOZIONE SFONDO E COMPOSIZIONE HD
+# ==========================================
 with tab1:
+    st.header("📸 Ottimizzazione Sfondo Fotografico via AI")
     col_foto1, col_foto2 = st.columns([1.2, 1.8], gap="large")
+    
     with col_foto1:
-        st.markdown("### 1️⃣ Carica la tua Foto")
-        foto_originale = st.file_uploader("Trascina la foto:", type=["jpg", "jpeg", "png"])
-        scenario = st.selectbox("Scenario:", ["Gruccia (Cemento)", "Showroom Lusso", "Bianco E-commerce"])
-        proporzione = st.slider("Dimensione capo (%):", 50, 90, 70)
+        st.markdown("### 1️⃣ Carica la tua Foto Reale")
+        foto_originale = st.file_uploader("Trascina qui la foto scattata:", type=["jpg", "jpeg", "png"], key="vinted_uploader")
         
-    with col_foto2:
         if foto_originale:
-            if st.button("✨ Genera Foto Catalogo (Metodo GrabCut)"):
-                with st.spinner("Calcolo maschera geometrica in corso..."):
+            st.image(foto_originale, caption="Foto originale caricata", width=140)
+
+        st.markdown("### ⚙️ Impostazioni Scontornamento AI")
+        modalita_scontorno = st.selectbox(
+            "Modalità di ritaglio del capo:",
+            ["Bordi Precisi (Specifico per Magliette Bianche/Chiare)", "Standard (AI)"]
+        )
+        
+        if "bg_seed" not in st.session_state: st.session_state.bg_seed = random.randint(1, 9999)
+        if st.button("🔄 Cambia variante sfondo"): st.session_state.bg_seed = random.randint(1, 9999)
+
+        tipo_sfondo_scelto = st.selectbox("Scenario:", [
+            "Gruccia in legno minimale su muro in cemento industriale",
+            "Showroom di lusso (Sfondo vuoto con luci calde)",
+            "Sfondo bianco puro e-commerce (Stile Amazon/Zalando)"
+        ])
+        proporzione_capo = st.slider("Dimensione del capo (%):", 50, 90, 70)
+
+    with col_foto2:
+        st.markdown("### 3️⃣ Risultato Elaborato in Ultra HD")
+        if foto_originale is not None:
+            if st.button("✨ Genera Foto Catalogo HQ", type="primary"):
+                with st.spinner("Isolamento tessuto e fusione in corso..."):
                     try:
-                        img_input = Image.open(foto_originale)
-                        # Isola senza AI
-                        maglietta = extract_tshirt_grabcut(img_input)
+                        img_input = Image.open(foto_originale).convert("RGBA")
+                        
+                        # LOGICA FIXLAB PER BIANCO SU BIANCO (Risolve il logo isolato)
+                        if modalita_scontorno == "Bordi Precisi (Specifico per Magliette Bianche/Chiare)":
+                            img_lab = img_input.convert("LAB")
+                            l, a, b = img_lab.split()
+                            # Soglia luminanza
+                            mask = l.point(lambda i: 255 if i > 200 else 0)
+                            mask = mask.filter(ImageFilter.MaxFilter(9))
+                            mask = mask.filter(ImageFilter.GaussianBlur(2))
+                            maglietta_isolata = img_input.copy()
+                            maglietta_isolata.putalpha(mask)
+                        else:
+                            maglietta_isolata = remove(img_input, session=st.session_state.session_standard)
+
+                        # Generazione Sfondo (Pollinations)
+                        prompt_mappa = {
+                            "Gruccia in legno minimale su muro in cemento industriale": "Minimalist wooden clothes hanger on raw grey concrete wall, soft side lighting, no clothes",
+                            "Showroom di lusso (Sfondo vuoto con luci calde)": "Empty luxury fashion boutique, warm cinematic lighting, no clothes",
+                            "Sfondo bianco puro e-commerce (Stile Amazon/Zalando)": "Clean solid pure white studio background, professional e-commerce, no clothes"
+                        }
+                        url = f"https://image.pollinations.ai/p/{prompt_mappa[tipo_sfondo_scelto].replace(' ', '%20')}?width=1440&height=1440&nologo=true&seed={st.session_state.bg_seed}"
+                        sfondo_reale = Image.open(io.BytesIO(requests.get(url).content)).convert("RGBA")
                         
                         # Composizione
-                        risultato = Image.new("RGBA", (1440, 1440), (255, 255, 255, 255))
-                        dim = int(1440 * (proporzione / 100))
-                        maglietta.thumbnail((dim, dim))
-                        pos = ((1440 - maglietta.width)//2, (1440 - maglietta.height)//2)
-                        risultato.paste(maglietta, pos, maglietta)
+                        dim = int(1440 * (proporzione_capo / 100))
+                        maglietta_isolata.thumbnail((dim, dim), Image.Resampling.LANCZOS)
                         
-                        st.image(risultato.convert("RGB"), width=580)
+                        # Ombra e posizionamento
+                        alpha = maglietta_isolata.getchannel('A')
+                        ombra = Image.new("RGBA", maglietta_isolata.size, (0, 0, 0, 40))
+                        ombra.putalpha(alpha)
+                        ombra = ombra.filter(ImageFilter.GaussianBlur(20))
+                        
+                        telaio = Image.new("RGBA", (1440, 1440), (0,0,0,0))
+                        pos = ((1440-maglietta_isolata.width)//2, (1440-maglietta_isolata.height)//2)
+                        telaio.paste(ombra, (pos[0]-10, pos[1]+15))
+                        telaio.paste(maglietta_isolata, pos, mask=maglietta_isolata)
+                        
+                        risultato = Image.alpha_composite(sfondo_reale, telaio).convert("RGB")
+                        st.image(risultato, width=580)
                     except Exception as e: st.error(f"Errore: {e}")
 
-# TAB 2: DESCRIZIONI
+# ==========================================
+# TAB 2: GENERATORE DESCRIZIONI
+# ==========================================
 with tab2:
-    st.header("📝 Scrittura Automatica Annunci")
-    c_a, c_b = st.columns(2)
-    with c_a:
+    st.header("📝 Scrittura Automatica Annunci Vinted")
+    col_a, col_b = st.columns(2, gap="large")
+    with col_a:
         brand = st.text_input("Brand", placeholder="Es. Off-White")
-        tipo = st.text_input("Tipo", placeholder="Es. T-shirt")
+        tipo = st.text_input("Tipo", placeholder="Es. T-Shirt")
+        colore = st.text_input("Colore")
         taglia = st.selectbox("Taglia", ["XS", "S", "M", "L", "XL"])
         condizioni = st.selectbox("Condizioni", ["Nuovo", "Ottimo", "Buono"])
-    with c_b:
+    with col_b:
         st.subheader("📋 Testo Pronto")
-        desc = f"Vendo {tipo} {brand}. Taglia {taglia}. Condizioni: {condizioni}. Spedizione rapida."
+        desc = f"Vendo {tipo} {brand}. Colore: {colore}. Taglia: {taglia}. Condizioni: {condizioni}."
         st.text_area("Copia questo:", desc, height=200)
 
+# ==========================================
 # TAB 3: CALCOLATORE PREZZI
+# ==========================================
 with tab3:
     st.header("💰 Calcolatore Margini")
-    costo = st.number_input("Costo acquisto (€)", value=15.0)
-    vendita = st.number_input("Prezzo vendita (€)", value=45.0)
-    sconto = st.slider("Sconto lotto (%)", 0, 50, 15)
+    c = st.number_input("Costo (€)", value=15.0)
+    v = st.number_input("Vendita (€)", value=45.0)
     
-    st.metric("Guadagno Netto", f"{(vendita - costo):.2f} €")
-    
-    df_prezzi = pd.DataFrame({
-        "Voce": ["Costo", "Vendita", "Profitto", "Prezzo Lotto"],
-        "Valore": [f"{costo}€", f"{vendita}€", f"{vendita-costo}€", f"{vendita*(1-sconto/100):.2f}€"]
+    data = pd.DataFrame({
+        "Voce": ["Costo", "Vendita", "Profitto Netto"], 
+        "Valore": [f"{c}€", f"{v}€", f"{v-c}€"]
     })
-    st.table(df_prezzi)
+    st.table(data)
 
+# ==========================================
 # TAB 4: TREND DI MERCATO
+# ==========================================
 with tab4:
     st.header("📊 Trend di Mercato")
-    st.markdown("### 🔥 Categorie più cercate")
-    df_trend = pd.DataFrame({
-        "Categoria": ["Streetwear", "Vintage", "Denim", "Accessori"],
-        "Trend": ["⬆️ Alta", "➡️ Stabile", "⬆️ Crescita", "⬇️ Basso"]
+    df = pd.DataFrame({
+        "Categoria": ["Streetwear", "Vintage", "Denim"],
+        "Trend": ["⬆️ Alta", "➡️ Stabile", "⬆️ Crescita"]
     })
-    st.dataframe(df_trend)
-    
-    st.markdown("### 📈 Nicchie ad alto margine")
-    df_nicchie = pd.DataFrame({
-        "Nicchia": ["Band Tees", "Football Jerseys", "Workwear"],
-        "Potenziale": ["Eccellente", "Molto Alto", "Alto"]
-    })
-    st.table(df_nicchie)
+    st.dataframe(df)
+
+# ==========================================
+# FOOTER / INFO
+# ==========================================
+st.markdown("---")
+st.write("Suite sviluppata per massimizzare le vendite su Vinted.")
