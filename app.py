@@ -71,11 +71,11 @@ with tab1:
                     st.error(f"Errore: {e}")
 
 # ==========================================
-# TAB 2: GENERATORE DESCRIZIONI AI (NUOVO!)
+# TAB 2: GENERATORE DESCRIZIONI AI
 # ==========================================
 with tab2:
     st.header("📝 Scrittura Automatica Annunci Vinted")
-    st.write("Compila i campi velocemente per generare una descrizione magnetica che attira i compratori e scala l'algoritmo di ricerca.")
+    st.write("Compila i campi velocemente per generare una descrizione magnetica che attira i compratori.")
 
     col_a, col_b = st.columns(2)
     with col_a:
@@ -96,10 +96,8 @@ with tab2:
     with col_b:
         st.subheader("📋 Testo Pronto da Copiare")
         
-        # Generatore di testo logico
         titolo_generato = f"✨ {tipo_capo.capitalize()} {brand.upper()} - {colore.capitalize()}"
-        
-        nota_difetti = f"• 🔎 Difetti: {difects}" if difetti else "• 🔎 Difetti: Nessuno, capo perfetto."
+        nota_difetti = f"• 🔎 Difetti: {difetti}" if difetti else "• 🔎 Difetti: Nessuno, capo perfetto."
         
         descrizione_generata = f"""🇮🇹 DESCRIZIONE ARTICOLO:
 Vendo bellissima {tipo_capo.lower()} originale del brand {brand.capitalize()}.
@@ -119,11 +117,11 @@ Tag per algoritmo:
         st.text_area("📄 Descrizione dell'annuncio (Copia e Incolla su Vinted):", descrizione_generata, height=320)
 
 # ==========================================
-# TAB 3: CALCOLATORE PREZZI & LOTTI (NUOVO!)
+# TAB 3: CALCOLATORE PREZZI & LOTTI (CORRETTO!)
 # ==========================================
 with tab3:
     st.header("💰 Controllo Margini e Sconti sui Lotti")
-    st.write("Calcola quanto guadagni davvero al netto dei tuoi costi ed imposta una strategia per i lotti di acquirenti multipli.")
+    st.write("Calcola quanto guadagni davvero al netto dei tuoi costi ed imposta una strategia per i lotti.")
 
     col_x, col_y = st.columns(2)
     with col_x:
@@ -136,15 +134,15 @@ with tab3:
     with col_y:
         st.subheader("📊 Resoconto Finanziario")
         
-        # Calcoli matematici semplici per il reselling
+        # Calcoli corretti
         ricavo_netto = prezzo_vendita - prezzo_acquisto
         roi = (ricavo_netto / prezzo_acquisto) * 100 if prezzo_acquisto > 0 else 0
         
         prezzo_scontato_lotto = prezzo_vendita * (1 - (percentuale_sconto / 100))
         guadagno_lotto = prezzo_scontato_lotto - prezzo_acquisto
 
-        # Box metriche visive
-        st.metric(label="🤑 Guadagno Netto Singolo", value=f"{ricavo_netto:.2s} €", delta=f"ROI: {roi:.1f}%")
+        # Metrica corretta senza il bug .2s
+        st.metric(label="🤑 Guadagno Netto Singolo", value=f"{ricavo_netto:.2f} €", delta=f"ROI: {roi:.1f}%")
         
         st.markdown("---")
         st.write(f"📉 **Se venduto in un lotto con lo sconto del {percentuale_sconto}%:**")
