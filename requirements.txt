@@ -3,4 +3,5 @@ pandas
 requests
 Pillow
 numpy
+onnxruntime
 rembg==2.0.60
