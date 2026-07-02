@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
+import requests
 import io
-import altair as alt
-from PIL import Image, ImageOps, ImageEnhance, ImageDraw, ImageFilter
+import base64
+from PIL import Image
 
 # Configurazione della pagina
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
@@ -14,133 +15,112 @@ st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
 # CREAZIONE DELLE 4 SCHEDE DI GESTIONE
 # ==========================================
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📸 Manichino Invisibile & Stiratura Pro", 
+    "📸 Manichino & Stiratura Avanzata AI", 
     "📝 Generatore Descrizioni AI", 
     "💰 Calcolatore Prezzi & Lotti", 
     "📊 Trend & Ricerca Rapida"
 ])
 
 # ==========================================
-# TAB 1: MANICHINO INVISIBILE INTERNO & STIRATURA DIGITALE
+# TAB 1: MANICHINO & STIRATURA REALE GESTITA DA AI
 # ==========================================
 with tab1:
-    st.header("📸 Effetto Manichino Invisibile & Stiratura Digitale")
-    st.write("Questo modulo elabora internamente la tua foto: rimuove le pieghe del tessuto simulando un ferro da stiro professionale e modella il capo su un manichino invisibile da catalogo.")
+    st.header("📸 Stiratura Professionale & Manichino via FLUX AI")
+    st.write("Carica lo scatto originale. L'AI analizzerà la maglietta, ne spianerà le pieghe e la monterà su un manichino da e-commerce.")
 
     col_foto1, col_foto2 = st.columns([1.2, 1.8], gap="large")
     
     with col_foto1:
-        st.markdown("### 1️⃣ Carica la tua Foto")
-        foto_originale = st.file_uploader("Carica lo scatto della maglietta (es. quella sul letto):", type=["png", "jpg", "jpeg"])
-
-        st.markdown("### 2️⃣ Impostazioni Manichino & Ferro da Stiro")
-        potenza_stiro = st.slider("Intensità Stiratura (Elimina pieghe del tessuto):", 0, 5, 3, step=1,
-                                  help="Aumenta per appiattire le pieghe e rendere il tessuto liscio da catalogo.")
+        st.markdown("### 1️⃣ Carica la tua Foto Reale")
+        foto_originale = st.file_uploader("Trascina qui la foto originale della maglietta (anche con pieghe):", type=["jpg", "jpeg", "png"])
         
-        tipo_manichino = st.selectbox(
-            "Seleziona il taglio del manichino:",
-            ["Busto Manichino Uomo (Spalle larghe, Streetwear)", "Busto Manichino Donna (Svitato/Slim)", "Manichino Invisibile Regular Fit"]
-        )
+        if foto_originale:
+            st.image(foto_originale, caption="Foto originale caricata", width=150)
 
-        opzione_sfondo = st.selectbox(
-            "Scegli l'ambiente del set fotografico:",
+        st.markdown("### 2️⃣ Aiuta l'AI a riconoscere i dettagli della stampa")
+        brand_capo = st.text_input("Marca (es. Off-White):", value="Off-White")
+        tipo_prodotto = st.text_input("Tipo di capo (es. T-shirt):", value="T-shirt")
+        
+        st.markdown("##### 🎯 Descrizione del Logo (Essenziale per non farlo rovinare)")
+        descrizione_stampa = st.text_area(
+            "Descrivi la stampa:", 
+            value="Big red arrows graphic pattern on the back, filled with red lips texture design"
+        )
+        
+        st.markdown("### 3️⃣ Scegli il Supporto da Catalogo")
+        tipo_esposizione = st.selectbox(
+            "Seleziona l'effetto desiderato:",
             [
-                "Studio Grigio Fotografico (Consigliato)",
-                "Boutique Minimalista Elegante",
-                "Fondale Bianco Puro E-commerce",
-                "Luce Calda Soft Da Showroom"
+                "Invisible ghost mannequin, perfectly ironed fabric, flat smooth texture, no wrinkles",
+                "Worn by a professional streetwear male model, lookbook catalog pose, perfectly ironed",
+                "Hanging cleanly on a premium luxury wooden hanger, sleek and smooth garment"
             ]
         )
         
-        st.markdown("### ⚙️ Posizionamento e Luce")
-        dimensione_capo = st.slider("Scala della maglietta sul manichino (%):", 30, 100, 80, step=5)
-        posizione_verticale = st.slider("Altezza sul set (Sposta Su/Giù):", 0, 100, 45, step=5)
-        luminosita = st.slider("Regolazione Luci (Luminosità):", 0.6, 1.8, 1.1, step=0.05)
+        tipo_sfondo = st.selectbox(
+            "Seleziona l'ambiente dello studio:",
+            [
+                "Clean photography studio background, neutral soft grey color, professional lighting",
+                "Luxury fashion showroom boutique with warm soft lighting",
+                "Minimalist bright white background for e-commerce website catalog"
+            ]
+        )
+
+        # Questo slider dice all'AI quanta libertà ha. 
+        # Più è basso, più stira e pulisce lo sfondo; più è alto, più tiene la foto simile all'originale sul letto.
+        forza_ai = st.slider("Livello di Stiratura / Modifica AI (Strength):", 0.30, 0.70, 0.50, step=0.05,
+                             help="0.30 mantiene la maglietta identica ma cambia poco lo sfondo. 0.70 stira tutto e monta sul manichino, ma potrebbe alterare i dettagli minimi.")
 
     with col_foto2:
-        st.markdown("### 3️⃣ Risultato Catalogo (Logo e Stampa Protetti al 100%)")
+        st.markdown("### 4️⃣ Risultato Elaborato dall'Intelligenza Artificiale")
         
         if foto_originale is not None:
-            try:
-                # 1. Caricamento immagine originale in modalità RGBA per gestire la trasparenza
-                capo_img = Image.open(foto_originale).convert("RGBA")
-                
-                # 2. PROCESSO DI STIRATURA DIGITALE (Rimozione pieghe tramite filtri di smoothing selettivi)
-                if potenza_stiro > 0:
-                    with st.spinner("Stiratura a vapore digitale del tessuto in corso..."):
-                        # Separiamo i canali per non perdere la definizione dei bordi del logo
-                        r, g, b, a = capo_img.split()
-                        # Applichiamo una sfocatura bilaterale/mediana per eliminare le micro-ombre delle pieghe
-                        r_smooth = r.filter(ImageFilter.MedianFilter(size=potenza_stiro * 2 + 1))
-                        g_smooth = g.filter(ImageFilter.MedianFilter(size=potenza_stiro * 2 + 1))
-                        b_smooth = b.filter(ImageFilter.MedianFilter(size=potenza_stiro * 2 + 1))
-                        # Ricomponiamo l'immagine: il tessuto apparirà stirato e liscio
-                        capo_img = Image.merge("RGBA", (r_smooth, g_smooth, b_smooth, a))
-
-                # 3. Regolazioni di luce e contrasto post-stiro
-                if luminosita != 1.0:
-                    enhancer = ImageEnhance.Brightness(capo_img)
-                    capo_img = enhancer.enhance(luminosita)
-                
-                # 4. CREAZIONE DELLO SFONDO DA STUDIO LOCALE (Zero rischi di Timeout o blocchi di rete)
-                sfondo_finale = Image.new("RGBA", (1080, 1080), color=(255, 255, 255, 255))
-                draw_bg = ImageDraw.Draw(sfondo_finale)
-                
-                if opzione_sfondo == "Studio Grigio Fotografico (Consigliato)":
-                    for i in range(1080):
-                        v = int(225 - (i / 15))
-                        draw_bg.line([(0, i), (1080, i)], fill=(v, v, v + 3, 255))
-                elif opzione_sfondo == "Boutique Minimalista Elegante":
-                    for i in range(1080):
-                        v = int(50 - (i / 25))
-                        draw_bg.line([(0, i), (1080, i)], fill=(v, v, v + 2, 255))
-                elif opzione_sfondo == "Fondale Bianco Puro E-commerce":
-                    draw_bg.rectangle([(0, 0), (1080, 1080)], fill=(255, 255, 255, 255))
-                elif opzione_sfondo == "Luce Calda Soft Da Showroom":
-                    for i in range(1080):
-                        r_c = int(245 - (i / 22))
-                        g_c = int(238 - (i / 18))
-                        b_c = int(225 - (i / 14))
-                        draw_bg.line([(0, i), (1080, i)], fill=(r_c, g_c, b_c, 255))
-                
-                # Applichiamo una sfocatura morbida per l'effetto lente da studio
-                sfondo_studio = sfondo_finale.filter(ImageFilter.GaussianBlur(radius=6))
-                
-                # 5. EFFETTO MANICHINO INVISIBILE (Adattamento geometrico delle proporzioni)
-                sfondo_w, sfondo_h = 1080, 1080
-                nuovo_w = int(sfondo_w * (dimensione_capo / 100))
-                nuovo_h = int(capo_img.height * (nuovo_w / capo_img.width))
-                
-                # Ridimensionamento ad alta fedeltà (Lanczos per non sgranare il logo)
-                capo_su_manichino = capo_img.resize((nuovo_w, nuovo_h), Image.Resampling.LANCZOS)
-                
-                # Calcolo coordinate centrate per il posizionamento sul set
-                pos_x = (sfondo_w - nuovo_w) // 2
-                spazio_y_libero = sfondo_h - nuovo_h
-                pos_y = int(spazio_y_libero * (posizione_verticale / 100)) if spazio_y_libero > 0 else 0
-                
-                # 6. Assemblaggio definitivo: incolliamo la maglietta stirata sul set
-                sfondo_studio.paste(capo_su_manichino, (pos_x, pos_y), capo_su_manichino if capo_img.mode == 'RGBA' else None)
-                
-                # Conversione finale pronta per lo schermo e il download
-                output_visualizzazione = sfondo_studio.convert("RGB")
-                st.image(output_visualizzazione, caption=f"Capo montato su {tipo_manichino} (Tessuto Stirato)", use_container_width=True)
-                
-                # Bottone di Download istantaneo ad altissima qualità
-                buf = io.BytesIO()
-                output_visualizzazione.save(buf, format="JPEG", quality=98)
-                st.download_button(
-                    label="📥 Scarica Foto Stirata su Manichino",
-                    data=buf.getvalue(),
-                    file_name="vinted_mannequin_stirato.jpg",
-                    mime="image/jpeg"
-                )
-                st.success("Tessuto teso e stirato con successo! Il tuo logo Off-White è rimasto originale e nitido al 100%.")
-                
-            except Exception as e:
-                st.error(f"Errore durante l'elaborazione del manichino: {e}")
+            if st.button("✨ Fai Stirare e Montare all'AI", type="primary"):
+                with st.spinner("L'AI sta rimuovendo le pieghe e posizionando il capo sul manichino..."):
+                    try:
+                        # Codifica l'immagine in Base64 per inviarla al motore di Inpainting FLUX
+                        bytes_data = foto_originale.getvalue()
+                        base64_image = base64.b64encode(bytes_data).decode("utf-8")
+                        data_url = f"data:image/jpeg;base64,{base64_image}"
+                        
+                        # Costruiamo il prompt per convincere l'AI a stirare e usare il manichino
+                        prompt_str = (
+                            f"Professional high-end e-commerce product photography of the exact {brand_capo.lower()} {tipo_prodotto.lower()} from the source image. "
+                            f"{tipo_esposizione}. {tipo_sfondo}. "
+                            f"The t-shirt must be perfectly ironed, 100% smooth fabric with zero wrinkles, pristine condition. "
+                            f"Maintain the identical print and graphic shapes: {descrizione_stampa.lower()}. "
+                            f"Photorealistic, crisp clean details, sharp focus, 8k catalog look."
+                        ).replace(" ", "%20")
+                        
+                        # Chiamata API al server FLUX con invio dell'immagine originale
+                        api_url = f"https://image.pollinations.ai/p/{prompt_str}?width=1080&height=1080&nologo=true&model=flux&seed=42"
+                        payload = {
+                            "image": data_url,
+                            "strength": forza_ai
+                        }
+                        
+                        response = requests.post(api_url, json=payload, timeout=45)
+                        
+                        if response.status_code == 200:
+                            image_res = Image.open(io.BytesIO(response.content))
+                            st.image(image_res, caption="Foto finale stirata dall'AI", use_container_width=True)
+                            
+                            # Preparazione file per il download
+                            buffer = io.BytesIO()
+                            image_res.save(buffer, format="JPEG", quality=95)
+                            st.download_button(
+                                label="📥 Scarica Foto Catalogo Finita",
+                                data=buffer.getvalue(),
+                                file_name="vinted_ai_mannequin_stirato.jpg",
+                                mime="image/jpeg"
+                            )
+                            st.success("L'AI ha completato l'elaborazione! Se noti che il logo si deforma, abbassa il 'Livello di Stiratura AI' a 0.40 o 0.35 e riprova.")
+                        else:
+                            st.error("Il server AI è congestionato in questo momento. Attendi qualche istante e clicca nuovamente.")
+                    except Exception as e:
+                        st.error(f"Errore di connessione con il motore grafico AI: {e}")
         else:
-            st.info("💡 Carica la foto della tua maglietta a sinistra per vederla immediatamente stirata e montata sul manichino da studio.")
+            st.info("💡 Carica lo scatto originale a sinistra, descrivi il logo e premi il pulsante per far fare tutto all'AI.")
 
 # ==========================================
 # TAB 2: GENERATORE DESCRIZIONI AI
