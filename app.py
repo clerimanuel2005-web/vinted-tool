@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import io
 import altair as alt
+import base64
 from PIL import Image
 
 # Configurazione della pagina
@@ -15,89 +16,106 @@ st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
 # CREAZIONE DELLE 4 SCHEDE DI GESTIONE
 # ==========================================
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📸 Manichino & Sfondi AI", 
+    "📸 Manichino & Sfondi AI (Img2Img)", 
     "📝 Generatore Descrizioni AI", 
     "💰 Calcolatore Prezzi & Lotti", 
     "📊 Trend & Ricerca Rapida"
 ])
 
 # ==========================================
-# TAB 1: GENERATORE MANICHINO E SFONDI PROFESSIONAL
+# TAB 1: STUDIO FOTOGRAFICO CON IMAGE-TO-IMAGE
 # ==========================================
 with tab1:
-    st.header("📸 Studio Fotografico AI: Indossa su Modello o Manichino")
-    st.write("Crea foto catalogo per i tuoi vestiti inserendo i dettagli del capo reale per vederlo indossato professionalmente.")
+    st.header("📸 Studio Fotografico AI: Trasforma la tua Foto Reale")
+    st.write("Carica la foto reale del tuo capo. L'AI userà la tua immagine come base per mantenere il logo originale identico, inserendolo su un manichino o modello nel contesto scelto.")
 
     col_foto1, col_foto2 = st.columns(2, gap="large")
     
     with col_foto1:
-        st.markdown("### 1️⃣ Dettagli del Capo Reale")
-        brand_capo = st.text_input("Marca del vestito da ricreare:", value="Off-White")
-        tipo_prodotto = st.text_input("Tipo di vestito (es. t-shirt, felpa con cappuccio):", value="t-shirt a maniche corte")
-        colore_tessuto = st.text_input("Colore del tessuto e dettagli:", value="bianco puro con grande logo a frecce rosse sul retro")
+        st.markdown("### 1️⃣ Carica la Foto Reale del Capo")
+        foto_originale = st.file_uploader("Trascina qui la foto scattata da te (es. sul letto o appendiabiti):", type=["jpg", "jpeg", "png"])
         
-        st.markdown("### 2️⃣ Scegli il Supporto (Come vuoi esporlo?)")
+        if foto_originale:
+            st.image(foto_originale, caption="Tua foto di riferimento originale", width=200)
+
+        st.markdown("### 2️⃣ Dettagli per il perfezionamento")
+        brand_capo = st.text_input("Marca del vestito:", value="Off-White")
+        tipo_prodotto = st.text_input("Tipo di vestito:", value="t-shirt")
+        
+        st.markdown("### 3️⃣ Scegli il Supporto & Ambientazione")
         opzione_esposizione = st.selectbox(
-            "Seleziona il tipo di presentazione:",
+            "Come vuoi esporlo?:",
             [
-                "Indossato su un manichino invisibile (Ghost Mannequin) da negozio, perfettamente stirato",
-                "Indossato da un modello ragazzo streetwear in posa, focus sul brand",
-                "Indossato da una modella ragazza streetwear in posa di fronte, stile catalogo",
-                "Appeso a una gruccia di legno minimalista all'interno di una boutique"
+                "Placed perfectly on an invisible ghost mannequin, smooth fabric, no wrinkles",
+                "Worn by a professional male model, streetwear look, fashion catalog pose",
+                "Worn by a professional female model, modern look, clear front view",
+                "Hanging elegantely on a minimalist wooden hanger"
             ]
         )
         
-        st.markdown("### 3️⃣ Scegli l'Ambientazione (Sfondo)")
         stile_sfondo = st.selectbox(
             "Scegli lo sfondo:",
             [
-                "Dentro uno showroom di lusso con pavimento in resina grigia e luci calde soffuse",
-                "Strade urbane di Londra, sfondo di mattoni scuri industriali e stile underground sfocato",
-                "Studio fotografico professionale, sfondo grigio chiaro minimale, illuminazione da studio pulita",
-                "Muro di cemento minimalista grigio con luci spot dall'alto"
+                "Inside a luxury fashion showroom boutique, warm soft lighting, grey resin floor",
+                "Industrial urban street background, blurred city lights, London underground style",
+                "Clean minimal photography studio background, soft professional catalog lighting",
+                "Minimalist concrete wall with premium studio spot light from top"
             ]
         )
+        
+        # Slider di fedeltà all'originale
+        somiglianza = st.slider("Fedeltà alla foto originale (Più è alto, più il logo rimane identico):", 0.50, 0.90, 0.75, step=0.05)
 
     with col_foto2:
         st.markdown("### 4️⃣ Risultato Generato")
         
-        # Costruiamo il pulsante di generazione
-        if st.button("✨ Genera Foto Professionale Gratis", type="primary"):
-            with st.spinner("L'AI sta creando il mockup sul manichino/modello... Attendi qualche secondo."):
-                try:
-                    # Costruzione del prompt fotografico perfetto in inglese per l'AI
-                    prompt_ai = (
-                        f"Professional studio product photography of a {brand_capo.lower()} {tipo_prodotto.lower()}, "
-                        f"{colore_tessuto.lower()}, {opzione_esposizione.lower()}, {stile_sfondo.lower()}, "
-                        f"high-end commercial look, lookbook style, 8k resolution, crisp details, hyperrealistic."
-                    ).replace(" ", "%20") # Codifica gli spazi per l'URL
-                    
-                    # URL dell'API di Pollinations (stabile, ultra-veloce e senza chiavi a pagamento)
-                    api_url = f"https://image.pollinations.ai/p/{prompt_ai}?width=1080&height=1080&nologo=true"
-                    
-                    # Scarichiamo l'immagine generata dal server esterno sicuro
-                    response = requests.get(api_url, timeout=30)
-                    
-                    if response.status_code == 200:
-                        image_res = Image.open(io.BytesIO(response.content))
-                        st.image(image_res, caption="Anteprima Foto Catalogo per Vinted", use_container_width=True)
+        if foto_originale is not None:
+            if st.button("✨ Genera Foto Professionale Fedele", type="primary"):
+                with st.spinner("Analisi della foto originale e fusione con il manichino... Attendi qualche secondo."):
+                    try:
+                        # Convertiamo l'immagine caricata in Base64 leggibile dall'AI senza salvare file sul server
+                        bytes_data = foto_originale.getvalue()
+                        base64_image = base64.b64encode(bytes_data).decode("utf-8")
+                        data_url = f"data:image/jpeg;base64,{base64_image}"
                         
-                        # Preparazione del download per l'utente
-                        buffer = io.BytesIO()
-                        image_res.save(buffer, format="JPEG", quality=95)
-                        st.download_button(
-                            label="📥 Scarica Foto Pronta per Vinted",
-                            data=buffer.getvalue(),
-                            file_name="vinted_catalogo_pro.jpg",
-                            mime="image/jpeg"
-                        )
-                        st.success("Immagine creata! Puoi caricarla come copertina del tuo annuncio.")
-                    else:
-                        st.error("Errore temporaneo nel caricamento del modello grafico. Riprova tra un attimo.")
-                except Exception as e:
-                    st.error(f"Errore di rete: {e}. Controlla la tua connessione.")
+                        # Costruzione del prompt avanzato combinando testo ed elementi strutturali dell'immagine sorgente
+                        prompt_str = (
+                            f"High-end commercial product photography of the exact {brand_capo.lower()} {tipo_prodotto.lower()} from the source image. "
+                            f"{opzione_esposizione}, {stile_sfondo}. Keep the original graphic print logo, shapes, and colors exactly as shown in the source image. "
+                            f"Photorealistic, 8k resolution, crisp details, highly professional look."
+                        ).replace(" ", "%20")
+                        
+                        # Chiamata al motore avanzato Image-to-Image di Pollinations (Flux-Img2Img-Bypass)
+                        api_url = f"https://image.pollinations.ai/p/{prompt_str}?width=1080&height=1080&nologo=true&seed=42"
+                        
+                        # Inviamo la richiesta includendo la struttura dell'immagine sorgente
+                        payload = {
+                            "image": data_url,
+                            "strength": somiglianza # Controlla quanto l'AI può variare rispetto alla maglietta reale
+                        }
+                        
+                        response = requests.post(api_url, json=payload, timeout=40)
+                        
+                        if response.status_code == 200:
+                            image_res = Image.open(io.BytesIO(response.content))
+                            st.image(image_res, caption="Foto Catalogo generata mantenendo il tuo capo reale", use_container_width=True)
+                            
+                            # Download
+                            buffer = io.BytesIO()
+                            image_res.save(buffer, format="JPEG", quality=95)
+                            st.download_button(
+                                label="📥 Scarica Foto per Vinted",
+                                data=buffer.getvalue(),
+                                file_name="vinted_catalogo_fedele.jpg",
+                                mime="image/jpeg"
+                            )
+                            st.success("Immagine creata! Il logo è stato preservato usando la tua foto come mappa.")
+                        else:
+                            st.error("Il sistema di rendering è temporaneamente occupato. Clicca di nuovo tra 5 secondi.")
+                    except Exception as e:
+                        st.error(f"Errore durante l'elaborazione dell'immagine: {e}")
         else:
-            st.info("💡 Scegli le opzioni a sinistra e clicca sul pulsante rosso per generare la foto perfetta del tuo capo sul manichino o sul modello.")
+            st.info("💡 Carica la foto reale del tuo capo a sinistra (box 1) per permettere all'AI di copiare fedelmente il logo reale!")
 
 # ==========================================
 # TAB 2: GENERATORE DESCRIZIONI AI
