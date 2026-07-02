@@ -3,47 +3,68 @@ import pandas as pd
 import requests
 import io
 import random
-from PIL import Image, ImageFilter, ImageOps, ImageEnhance
-from rembg import remove, new_session
+import cv2
+import numpy as np
+from PIL import Image, ImageOps
 
-# CONFIGURAZIONE PAGINA
+# 1. CONFIGURAZIONE PAGINA
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
 
-# CACHE RESOURCE: Carica AI una sola volta
-@st.cache_resource
-def get_session():
-    return new_session(model_name="u2net_clothing")
-
-session_clothing = get_session()
-
 st.title("🛍️ Vinted Power Seller Suite")
-st.write("L'hub definitivo per gestire il tuo business su Vinted.")
 
+# Funzione GrabCut (Sostituisce l'AI che sbagliava)
+def extract_tshirt_grabcut(pil_img):
+    # Convertiamo PIL a OpenCV (BGR)
+    img = np.array(pil_img.convert("RGB"))
+    img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    
+    # Creiamo una maschera basata sulla dimensione dell'immagine
+    # GrabCut parte dall'idea che il capo sia al centro
+    mask = np.zeros(img_bgr.shape[:2], np.uint8)
+    bgdModel = np.zeros((1, 65), np.float64)
+    fgdModel = np.zeros((1, 65), np.float64)
+    
+    # Rettangolo che definisce l'area (margine di 50px dai bordi)
+    h, w = img_bgr.shape[:2]
+    rect = (50, 50, w - 100, h - 100)
+    
+    # Algoritmo GrabCut
+    cv2.grabCut(img_bgr, mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_RECT)
+    
+    # Creiamo una maschera binaria (0 per sfondo, 1 per oggetto)
+    mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
+    img_final = img_bgr * mask2[:, :, np.newaxis]
+    
+    # Convertiamo di nuovo in PIL RGBA
+    img_rgba = cv2.cvtColor(img_final, cv2.COLOR_BGR2RGBA)
+    # Impostiamo il trasparente dove la maschera è 0
+    img_rgba[mask2 == 0] = [0, 0, 0, 0]
+    
+    return Image.fromarray(img_rgba)
+
+# ==========================================
+# NAVIGAZIONE
+# ==========================================
 tab1, tab2, tab3, tab4 = st.tabs(["📸 Manichino AI", "📝 Annunci", "💰 Prezzi", "📊 Trend"])
 
-# TAB 1: MANICHINO AI (Con correzione logo)
 with tab1:
     col1, col2 = st.columns([1, 1.5])
     with col1:
-        st.subheader("Configurazione")
+        st.subheader("Caricamento")
         foto_originale = st.file_uploader("Carica foto:", type=["jpg", "jpeg", "png"])
         proporzione = st.slider("Dimensione:", 50, 90, 70)
-        scenario = st.selectbox("Scenario:", ["Sfondo bianco", "Showroom", "Muro"])
-    
+        
     with col2:
         if foto_originale:
-            if st.button("✨ Genera Foto"):
-                with st.spinner("Elaborazione maglietta..."):
+            if st.button("✨ Genera Foto (Metodo GrabCut)"):
+                with st.spinner("Calcolo contorni in corso..."):
                     try:
-                        img_input = Image.open(foto_originale).convert("RGBA")
-                        # TRUCCO: Maschera sfocata per ignorare il logo
-                        img_blur = img_input.filter(ImageFilter.GaussianBlur(30))
-                        maschera = remove(img_blur, session=session_clothing).convert("L")
-                        maschera = maschera.filter(ImageFilter.MaxFilter(7))
+                        img_input = Image.open(foto_originale)
                         
-                        maglietta_isolata = img_input.copy()
-                        maglietta_isolata.putalpha(maschera)
+                        # Usiamo GrabCut invece di rembg
+                        maglietta_isolata = extract_tshirt_grabcut(img_input)
                         
+                        # Composizione
                         risultato = Image.new("RGBA", (1440, 1440), (255, 255, 255, 255))
                         dim = int(1440 * (proporzione / 100))
                         maglietta_isolata.thumbnail((dim, dim))
@@ -52,58 +73,40 @@ with tab1:
                         
                         st.image(risultato.convert("RGB"), width=500)
                     except Exception as e:
-                        st.error(f"Errore: {e}")
+                        st.error(f"Errore tecnico: {e}")
 
-# TAB 2: DESCRIZIONI DETTAGLIATE
+# TAB 2: DESCRIZIONI
 with tab2:
     st.header("📝 Generatore Descrizioni")
-    c1, c2 = st.columns(2)
-    with c1:
-        brand = st.text_input("Brand", "Off-White")
-        tipo = st.text_input("Tipo", "T-Shirt")
-        taglia = st.selectbox("Taglia", ["S", "M", "L", "XL"])
-        cond = st.selectbox("Condizioni", ["Nuovo", "Ottimo", "Buono"])
-    with c2:
-        st.subheader("Testo Generato")
-        testo = f"Vendo {tipo} originale {brand}. Taglia {taglia}. Condizioni: {cond}. Ottima qualità."
-        st.text_area("Copia/Incolla", testo, height=200)
+    brand = st.text_input("Brand")
+    tipo = st.text_input("Tipo")
+    if st.button("Genera Testo"):
+        st.text_area("Copia questo:", f"Vendo {tipo} originale {brand}. In ottime condizioni, lavato e igienizzato.")
 
-# TAB 3: CALCOLATORE PREZZI COMPLETO
+# TAB 3: CALCOLATORE PREZZI
 with tab3:
-    st.header("💰 Calcolatore Margini Avanzato")
-    costo = st.number_input("Costo Acquisto (€)", value=15.0)
-    vendita = st.number_input("Prezzo Vendita (€)", value=45.0)
-    sconto = st.slider("Sconto Lotto (%)", 0, 50, 10)
+    st.header("💰 Calcolatore Margini")
+    costo = st.number_input("Costo (€)", value=15.0)
+    vendita = st.number_input("Vendita (€)", value=45.0)
     
-    # Tabelle dettagliate
-    profitto_singolo = vendita - costo
-    profitto_lotto = (vendita * (1 - sconto/100)) - costo
+    st.metric("Guadagno", f"{vendita - costo:.2f} €")
     
-    st.metric("Profitto Vendita Singola", f"{profitto_singolo:.2f} €")
-    
-    st.subheader("Analisi Dettagliata")
     df_prezzi = pd.DataFrame({
-        "Tipo": ["Singolo", "Lotto"],
-        "Prezzo": [f"{vendita}€", f"{vendita * (1 - sconto/100):.2f}€"],
-        "Profitto": [f"{profitto_singolo:.2f}€", f"{profitto_lotto:.2f}€"]
+        "Voce": ["Costo", "Vendita", "Profitto"], 
+        "Valore": [f"{costo}€", f"{vendita}€", f"{vendita-costo}€"]
     })
     st.table(df_prezzi)
 
-# TAB 4: TREND DI MERCATO
+# TAB 4: TREND
 with tab4:
-    st.header("📊 Analisi Trend di Mercato")
-    st.subheader("Categorie Hot")
+    st.header("📊 Trend di Mercato")
     df_trend = pd.DataFrame({
-        "Categoria": ["Streetwear", "Vintage", "Denim", "Accessori"],
-        "Volume": ["Alto", "Medio", "Alto", "Basso"],
-        "Trend": ["⬆️", "➡️", "⬆️", "⬇️"]
+        "Categoria": ["Streetwear", "Vintage", "Denim"],
+        "Trend": ["⬆️ Alta", "➡️ Stabile", "⬆️ Crescita"]
     })
-    # Tabella standard senza parametri deprecati
     st.dataframe(df_trend)
     
-    st.subheader("Nicchie ad alto margine")
-    df_nicchie = pd.DataFrame({
-        "Nicchia": ["Band Tees", "Football Jerseys", "Workwear"],
-        "Potenziale": ["Eccellente", "Molto Alto", "Alto"]
-    })
-    st.table(df_nicchie)
+    st.table(pd.DataFrame({
+        "Nicchia": ["Band Tees", "Football Jerseys"],
+        "Potenziale": ["Eccellente", "Molto Alto"]
+    }))
