@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 from PIL import Image, ImageEnhance
 import io
+import urllib.parse
 
 # Configurazione della pagina
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
@@ -18,7 +19,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "📸 Clothes Ironing AI", 
     "📝 Generatore Descrizioni AI", 
     "💰 Calcolatore Prezzi & Lotti", 
-    "📊 Trend del Mese"
+    "📊 Trend & Ricerca Rapida"
 ])
 
 # ==========================================
@@ -117,7 +118,7 @@ Tag per algoritmo:
         st.text_area("📄 Descrizione dell'annuncio (Copia e Incolla su Vinted):", descrizione_generata, height=320)
 
 # ==========================================
-# TAB 3: CALCOLATORE PREZZI & LOTTI (CORRETTO!)
+# TAB 3: CALCOLATORE PREZZI & LOTTI
 # ==========================================
 with tab3:
     st.header("💰 Controllo Margini e Sconti sui Lotti")
@@ -134,32 +135,64 @@ with tab3:
     with col_y:
         st.subheader("📊 Resoconto Finanziario")
         
-        # Calcoli corretti
         ricavo_netto = prezzo_vendita - prezzo_acquisto
         roi = (ricavo_netto / prezzo_acquisto) * 100 if prezzo_acquisto > 0 else 0
         
         prezzo_scontato_lotto = prezzo_vendita * (1 - (percentuale_sconto / 100))
         guadagno_lotto = prezzo_scontato_lotto - prezzo_acquisto
 
-        # Metrica corretta senza il bug .2s
         st.metric(label="🤑 Guadagno Netto Singolo", value=f"{ricavo_netto:.2f} €", delta=f"ROI: {roi:.1f}%")
         
         st.markdown("---")
         st.write(f"📉 **Se venduto in un lotto con lo sconto del {percentuale_sconto}%:**")
         st.write(f"• Prezzo finale al compratore: **{prezzo_scontato_lotto:.2f} €**")
         st.write(f"• Tuo guadagno pulito sul pezzo: **{guadagno_lotto:.2f} €**")
-        
-        if guadagno_lotto <= 0:
-            st.error("⚠️ Attenzione: Con questo sconto lotto vai in perdita o guadagni 0€!")
-        else:
-            st.success("✅ Margine di guadagno sicuro.")
 
 # ==========================================
-# TAB 4: TREND
+# TAB 4: TREND & RICERCA RAPIDA DIRETTA (POTENZIATA!)
 # ==========================================
 with tab4:
-    st.header("I Trend di Mercato su Vinted")
+    st.header("📊 I Trend di Mercato Caldi & Ricerca Automatica")
+    st.write("Analizza la nicchia più redditizia del momento, poi clicca sul pulsante per cercarla direttamente su Vinted in un clic.")
+
+    # Dati dei trend ampliati ed approfonditi
     trend_data = [
-        {"Categoria": "Streetwear", "Brand Più Cercati": "Nike, Adidas, Stüssy", "Prezzo Medio Vendita": "25€ - 60€", "Richiesta": "🔥 Altissima"}
+        {"Categoria": "👟 Sneakers Hype", "Brand Più Cercati": "Nike TN, Jordan 4, Adidas Campus, New Balance 2002R", "Prezzo d'acquisto target": "< 40€", "Prezzo Vendita Medio": "70€ - 130€", "Velocità di Vendita": "⚡ Istantanea (Meno di 24 ore)"},
+        {"Categoria": "🧥 Gorpcore & Outerwear", "Brand Più Cercati": "The North Face (Nuptse), Arc'teryx, Patagonia, Carhartt WIP", "Prezzo d'acquisto target": "< 50€", "Prezzo Vendita Medio": "90€ - 160€", "Velocità di Vendita": "🔥 Molto Alta (1-2 giorni)"},
+        {"Categoria": "🛍️ Streetwear & Vetrate Grafiche", "Brand Più Cercati": "Stüssy, Corteiz, Supreme, Travis Scott Merch", "Prezzo d'acquisto target": "< 20€", "Prezzo Vendita Medio": "45€ - 80€", "Velocità di Vendita": "🔥 Molto Alta (24-48 ore)"},
+        {"Categoria": "👖 Denim Premium & Baggy", "Brand Più Cercati": "Levi's 501 / 550, Polar Skate Big Boy, Carhartt Double Knee", "Prezzo d'acquisto target": "< 15€", "Prezzo Vendita Medio": "35€ - 70€", "Velocità di Vendita": "✅ Alta (2-3 giorni)"},
+        {"Categoria": "🧢 Accessori & Vintage Y2K", "Brand Più Cercati": "Oakley Sunglasses, Diesel, Von Dutch, Ed Hardy", "Prezzo d'acquisto target": "< 10€", "Prezzo Vendita Medio": "25€ - 55€", "Velocità di Vendita": "✅ Media (3-4 giorni)"}
     ]
-    st.dataframe(pd.DataFrame(trend_data), use_container_width=True)
+    
+    # Visualizzazione Tabella Principale
+    df = pd.DataFrame(trend_data)
+    st.dataframe(df, use_container_width=True)
+    
+    st.markdown("---")
+    st.subheader("🔍 Azioni Veloci: Cerca Stock ed Errori di Prezzo su Vinted")
+    st.write("Clicca su uno di questi bottoni per aprire direttamente la pagina di Vinted. Consiglio: ordina i risultati per **'Più recenti'** per beccare chi svende i capi senza conoscere il vero valore!")
+
+    # Creazione dei bottoni di ricerca dinamici basati su URL Vinted
+    col_btn1, col_btn2, col_btn3, col_btn4 = st.columns(4)
+    
+    with col_btn1:
+        # Cerca sneaker Nike a meno di 40 euro
+        url_nike = "https://www.vinted.it/catalog?search_text=nike&price_to=40&order=newest_first"
+        st.link_button("👟 Cerca Scarpe Nike (<40€)", url_nike, use_container_width=True)
+
+    with col_btn2:
+        # Cerca felpe o magliette Stussy
+        url_stussy = "https://www.vinted.it/catalog?search_text=stussy&order=newest_first"
+        st.link_button("🛍️ Cerca Stüssy (Ultimi Arrivi)", url_stussy, use_container_width=True)
+
+    with col_btn3:
+        # Cerca Giacche The North Face
+        url_tnf = "https://www.vinted.it/catalog?search_text=the+north+face+giacca&order=newest_first"
+        st.link_button("🧥 Cerca Giacche TNF", url_tnf, use_container_width=True)
+
+    with col_btn4:
+        # Cerca jeans Levi's vintage economici
+        url_levis = "https://www.vinted.it/catalog?search_text=levis+501&price_to=20&order=newest_first"
+        st.link_button("👖 Cerca Levi's 501 (<20€)", url_levis, use_container_width=True)
+
+    st.info("💡 **Strategia Segreta 2026:** Apri i link, contatta i venditori che hanno caricato la foto da meno di 10 minuti, offri il 20% in meno, pulisci la foto con la nostra AI nella Tab 1 e rivendi al doppio!")
