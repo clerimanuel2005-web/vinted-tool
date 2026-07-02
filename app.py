@@ -1,4 +1,4 @@
-code_content = """import streamlit as st
+import streamlit as st
 import pandas as pd
 import requests
 import io
@@ -6,7 +6,7 @@ import random
 from PIL import Image, ImageFilter, ImageOps, ImageEnhance
 from rembg import remove
 
-# 1. CONFIGURAZIONE DELLA PAGINA (Deve essere il primo comando Streamlit)
+# 1. CONFIGURAZIONE DELLA PAGINA (Deve essere tassativamente il primo comando Streamlit)
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
 
 # Titolo principale dell'applicazione
@@ -42,7 +42,6 @@ with tab1:
 
         st.markdown("### ⚙️ Impostazioni Scontornamento AI")
         
-        # Sostituito il vecchio fix distruttivo con una selezione di modalità ottimizzate
         modalita_scontorno = st.selectbox(
             "Modalità di ritaglio del capo:",
             [
@@ -89,8 +88,7 @@ with tab1:
                         if modalita_scontorno == "Standard (Consigliato per magliette bianche e colorate)":
                             maglietta_isolata = remove(img_input).convert("RGBA")
                             
-                        elif modalita_scontorno == "Bordi Precisi (Ottimo per dettagli complexes o sfondi difficili)":
-                            # Utilizza l'alpha matting nativo di rembg per evitare tagli errati sui capi chiari
+                        elif modalita_scontorno == "Bordi Precisi (Ottimo per dettagli complessi o sfondi difficili)":
                             maglietta_isolata = remove(
                                 img_input, 
                                 alpha_matting=True, 
@@ -98,12 +96,11 @@ with tab1:
                                 alpha_matting_background_threshold=10
                             ).convert("RGBA")
                             
-                        else: # Forza Contrasto (versione bilanciata non distruttiva)
+                        else:
                             img_elaborata = ImageEnhance.Contrast(img_input).enhance(1.8)
                             img_elaborata = ImageEnhance.Sharpness(img_elaborata).enhance(1.5)
                             maschera_rembg = remove(img_elaborata).convert("RGBA")
                             
-                            # Ripristina i colori originali usando solo la maschera di ritaglio
                             alpha_canale = maschera_rembg.getchannel('A')
                             maglietta_isolata = img_input.convert("RGBA")
                             maglietta_isolata.putalpha(alpha_canale)
@@ -148,14 +145,13 @@ with tab1:
                             
                             immagine_pronta = Image.alpha_composite(sfondo_reale, telaio_trasparente).convert("RGB")
                             
-                            # FILTRO NITIDEZZA AVANZATO (Rende loghi, scritte e trame del tessuto ultra definiti)
+                            # FILTRO NITIDEZZA AVANZATO
                             esaltatore_nitidezza = ImageEnhance.Sharpness(immagine_pronta)
                             immagine_pronta = esaltatore_nitidezza.enhance(1.4)
                             
-                            # Mostra l'anteprima bloccando la larghezza per evitare l'allungamento sgranato del browser
+                            # Mostra l'anteprima bloccando la larghezza
                             st.image(immagine_pronta, caption="Anteprima del tuo annuncio premium in HD", width=580)
                             
-                            # Salvataggio in memoria alla massima qualità fotografica (Zero Compressione)
                             buffer = io.BytesIO()
                             immagine_pronta.save(buffer, format="JPEG", quality=100)
                             
@@ -213,7 +209,7 @@ with tab2:
         brand_tag = brand.replace(' ', '').lower() if brand else "brand"
         tipo_tag = tipo_capo.replace(' ', '').lower() if tipo_capo else "abbigliamento"
 
-        descrizione_generata = f\"\"\"🇮🇹 DESCRIZIONE ARTICOLO PREMIUM:
+        descrizione_generata = f"""🇮🇹 DESCRIZIONE ARTICOLO PREMIUM:
 Vendo bellissima {tipo_capo.lower() if tipo_capo else 'maglia'} originale {brand.capitalize() if brand else '-'}. Il capo è stato lavato professionalmente, igienizzato e conservato piegato.
 
 • 🎨 Colore e Dettagli: {colore.capitalize() if colore else '-'}
@@ -226,7 +222,7 @@ Spedizione super rapida e protetta entro 24 ore dall'acquisto 📦. Se hai doman
 
 ---
 # {brand_tag} #{tipo_tag} #taglia{taglia.lower()} #streetwear #vinteditalia #reseller
-\"\"\"
+"""
         st.text_input("📌 Titolo da inserire su Vinted:", titolo_generato)
         st.text_area("📄 Descrizione completa da inserire su Vinted:", descrizione_generata, height=340)
 
@@ -290,9 +286,3 @@ with tab4:
             "Incremento Domanda": ["+145%", "+120%", "+110%", "+85%"]
         })
         st.dataframe(tabelle_nicchie, use_container_width=True, hide_index=True)
-"""
-
-with open("app.py", "w", encoding="utf-8") as f:
-    f.write(code_content)
-
-print("File app.py successfully generated.")
