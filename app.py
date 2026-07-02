@@ -4,9 +4,9 @@ import requests
 import io
 import random
 from PIL import Image, ImageFilter, ImageOps, ImageEnhance
-from rembg import remove
+from rembg import remove, new_session
 
-# 1. CONFIGURAZIONE DELLA PAGINA (Deve essere tassativamente il primo comando Streamlit)
+# 1. CONFIGURAZIONE DELLA PAGINA (Deve essere il primo comando Streamlit)
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
 
 # Titolo principale dell'applicazione
@@ -45,12 +45,12 @@ with tab1:
         modalita_scontorno = st.selectbox(
             "Modalità di ritaglio del capo:",
             [
-                "Standard (Consigliato per magliette bianche e colorate)",
-                "Bordi Precisi (Ottimo per dettagli complessi o sfondi difficili)",
-                "Forza Contrasto (Usa solo se il capo viene parzialmente cancellato)"
+                "Bordi Precisi (Specifico per Magliette Bianche/Chiare)",
+                "Standard (Consigliato per capi scuri o molto colorati)",
+                "Forza Contrasto Avanzato"
             ],
             index=0,
-            help="Se la maglietta scompare o rimangono solo i loghi, passa alla modalità Standard o Bordi Precisi."
+            help="Usa la modalità Bordi Precisi se lo sfondo originale è chiaro e la maglietta bianca rischia di sparire."
         )
         
         # Permette di cambiare il seed per generare variazioni diverse dello stesso sfondo
@@ -62,8 +62,8 @@ with tab1:
         tipo_sfondo_scelto = st.selectbox(
             "Seleziona l'ambiente in cui inserire il tuo capo:",
             [
-                "Showroom di lusso (Sfondo vuoto con luci calde)",
                 "Gruccia in legno minimale su muro in cemento industriale",
+                "Showroom di lusso (Sfondo vuoto con luci calde)",
                 "Manichino sartoriale vuoto in un negozio di Milano centro",
                 "Stand appendiabiti in metallo vuoto, studio grigio catalogo",
                 "Sfondo bianco puro e-commerce (Stile Amazon/Zalando)",
@@ -71,34 +71,31 @@ with tab1:
             ]
         )
 
-        proporzione_capo = st.slider("Dimensione del capo all'interno dello scenario (%):", 50, 90, 72)
+        proporzione_capo = st.slider("Dimensione del capo all'interno dello scenario (%):", 50, 90, 70)
 
     with col_foto2:
         st.markdown("### 3️⃣ Risultato Elaborato in Ultra HD")
         
         if foto_originale is not None:
             if st.button("✨ Genera Foto Catalogo HQ", type="primary"):
-                with st.spinner("Scontornamento preciso e fusione dei livelli in corso..."):
+                with st.spinner("Isolamento tessuto bianco e fusione dei livelli in corso..."):
                     try:
                         # Caricamento immagine e auto-rotazione basata sui dati EXIF dello smartphone
                         img_input = Image.open(foto_originale)
                         img_input = ImageOps.exif_transpose(img_input)
                         
                         # APPLICAZIONE DELLA MODALITÀ DI SCONTORNAMENTO SELEZIONATA
-                        if modalita_scontorno == "Standard (Consigliato per magliette bianche e colorate)":
+                        if modalita_scontorno == "Bordi Precisi (Specifico per Magliette Bianche/Chiare)":
+                            # Inizializziamo il modello specifico per l'abbigliamento per evitare l'effetto trasparenza sul bianco
+                            sessione_clothing = new_session(model_name="u2net_clothing")
+                            maglietta_isolata = remove(img_input, session=sessione_clothing).convert("RGBA")
+                            
+                        elif modalita_scontorno == "Standard (Consigliato per capi scuri o molto colorati)":
                             maglietta_isolata = remove(img_input).convert("RGBA")
                             
-                        elif modalita_scontorno == "Bordi Precisi (Ottimo per dettagli complessi o sfondi difficili)":
-                            maglietta_isolata = remove(
-                                img_input, 
-                                alpha_matting=True, 
-                                alpha_matting_foreground_threshold=240, 
-                                alpha_matting_background_threshold=10
-                            ).convert("RGBA")
-                            
-                        else:
-                            img_elaborata = ImageEnhance.Contrast(img_input).enhance(1.8)
-                            img_elaborata = ImageEnhance.Sharpness(img_elaborata).enhance(1.5)
+                        else:  # Forza Contrasto Avanzato
+                            img_elaborata = ImageEnhance.Contrast(img_input).enhance(2.0)
+                            img_elaborata = ImageEnhance.Sharpness(img_elaborata).enhance(1.8)
                             maschera_rembg = remove(img_elaborata).convert("RGBA")
                             
                             alpha_canale = maschera_rembg.getchannel('A')
@@ -130,28 +127,29 @@ with tab1:
                             
                             # Generazione di un'ombra morbida realistica sotto il capo
                             alpha_ombra = maglietta_isolata.getchannel('A')
-                            ombra = Image.new("RGBA", maglietta_isolata.size, (0, 0, 0, 45))
+                            ombra = Image.new("RGBA", maglietta_isolata.size, (0, 0, 0, 40))
                             ombra.putalpha(alpha_ombra)
-                            ombra = ombra.resize((maglietta_isolata.width + 20, maglietta_isolata.height + 20))
-                            ombra = ombra.filter(ImageFilter.GaussianBlur(18))
+                            ombra = ombra.resize((maglietta_isolata.width + 25, maglietta_isolata.height + 25))
+                            ombra = ombra.filter(ImageFilter.GaussianBlur(22))
                             
                             # Posizionamento e composizione finale dei livelli sul canvas 1440p
                             telaio_trasparente = Image.new("RGBA", (1440, 1440), (0, 0, 0, 0))
                             pos_x = (1440 - maglietta_isolata.width) // 2
                             pos_y = (1440 - maglietta_isolata.height) // 2
                             
-                            telaio_trasparente.paste(ombra, (pos_x - 10, pos_y + 12))
+                            telaio_trasparente.paste(ombra, (pos_x - 12, pos_y + 15))
                             telaio_trasparente.paste(maglietta_isolata, (pos_x, pos_y), mask=maglietta_isolata)
                             
                             immagine_pronta = Image.alpha_composite(sfondo_reale, telaio_trasparente).convert("RGB")
                             
-                            # FILTRO NITIDEZZA AVANZATO
+                            # FILTRO NITIDEZZA AVANZATO (Rende i contorni e la trama del cotone definiti)
                             esaltatore_nitidezza = ImageEnhance.Sharpness(immagine_pronta)
                             immagine_pronta = esaltatore_nitidezza.enhance(1.4)
                             
-                            # Mostra l'anteprima bloccando la larghezza
+                            # Mostra l'anteprima bloccando la larghezza per evitare l'allungamento sgranato del browser
                             st.image(immagine_pronta, caption="Anteprima del tuo annuncio premium in HD", width=580)
                             
+                            # Salvataggio in memoria alla massima qualità fotografica (Zero Compressione)
                             buffer = io.BytesIO()
                             immagine_pronta.save(buffer, format="JPEG", quality=100)
                             
