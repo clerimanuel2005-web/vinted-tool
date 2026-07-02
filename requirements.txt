@@ -1,8 +1,6 @@
-pip 
-install 
 streamlit
 pandas
-requests 
+requests
 pillow
-numpy 
-opencv-python
+rembg
+numpy
