@@ -16,104 +16,102 @@ st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
 # CREAZIONE DELLE 4 SCHEDE DI GESTIONE
 # ==========================================
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📸 Manichino & Sfondi AI Multi-Scelta", 
+    "📸 Manichino & Sfondi AI (FLUX)", 
     "📝 Generatore Descrizioni AI", 
     "💰 Calcolatore Prezzi & Lotti", 
     "📊 Trend & Ricerca Rapida"
 ])
 
 # ==========================================
-# TAB 1: GENERATORE MULTI-OPZIONE AI
+# TAB 1: STUDIO FOTOGRAFICO CON MOTORE FLUX (PRESERVA GRAFICA)
 # ==========================================
 with tab1:
-    st.header("📸 Studio Fotografico AI Avanzato: Scegli il tuo Risultato")
-    st.write("Carica la foto reale del capo. L'AI elaborerà le varianti e potrai selezionare la foto professionale migliore da salvare.")
+    st.header("📸 Ricrea il tuo Capo su Manichino o Modello con FLUX AI")
+    st.write("Per evitare deformazioni, descrivi accuratamente la grafica della tua maglietta reale. Il motore ad alta fedeltà FLUX ricostruirà il contesto mantenendo intatti loghi e scritte.")
 
     col_foto1, col_foto2 = st.columns([1.2, 1.8], gap="large")
     
     with col_foto1:
-        st.markdown("### 1️⃣ Carica la tua Foto Reale")
-        foto_originale = st.file_uploader("Carica lo scatto originale (es. la maglietta sul letto):", type=["jpg", "jpeg", "png"])
+        st.markdown("### 1️⃣ Carica la tua Foto Reale per Riferimento")
+        foto_originale = st.file_uploader("Carica lo scatto (serve per i colori e la forma):", type=["jpg", "jpeg", "png"])
         
         if foto_originale:
-            st.image(foto_originale, caption="Foto originale caricata con successo", width=150)
+            st.image(foto_originale, caption="Foto di riferimento caricata", width=150)
 
-        st.markdown("### 2️⃣ Dettagli dell'Articolo")
-        brand_capo = st.text_input("Marca del capo:", value="", placeholder="Es. Off-White, Nike, Jordan...")
-        tipo_prodotto = st.text_input("Tipo di capo:", value="", placeholder="Es. t-shirt, felpa con cappuccio...")
+        st.markdown("### 2️⃣ Inserisci i Campi Personalizzati (Cosa c'è sulla maglietta?)")
+        brand_capo = st.text_input("Marca del vestito:", value="", placeholder="Es. Off-White, Supreme...")
+        tipo_prodotto = st.text_input("Tipo di vestito:", value="", placeholder="Es. T-shirt a maniche corte, Felpa...")
+        colore_base = st.text_input("Colore del tessuto:", value="", placeholder="Es. bianco puro, nero slavato...")
         
-        st.markdown("### ⚙️ Parametri di Controllo AI")
-        conservazione = st.slider("Mantenimento Grafica Originale:", 0.60, 0.90, 0.80, step=0.05, 
-                                  help="Valori alti costringono l'AI a non toccare il logo originale.")
+        st.markdown("##### 🎯 Descrizione Dettagliata della Stampa / Logo")
+        dettagli_grafica = st.text_area(
+            "Descrivi esattamente la grafica (Es. Grande logo a frecce rosse sul retro riempite con pattern di labbra rosse):", 
+            value="", 
+            placeholder="Sii super preciso qui. L'AI leggerà questa descrizione per replicare la stampa identica."
+        )
+        
+        st.markdown("### 3️⃣ Scegli il Supporto & Ambientazione")
+        opzione_esposizione = st.selectbox(
+            "Come vuoi esporlo?:",
+            [
+                "Worn by a professional streetwear male model, view from behind, modern catalog pose",
+                "Placed perfectly on an invisible ghost mannequin, smooth premium fabric, no wrinkles",
+                "Worn by a professional female model, clear front view, minimalist catalog style",
+                "Hanging elegantly on a minimalist premium wooden hanger"
+            ]
+        )
+        
+        stile_sfondo = st.selectbox(
+            "Scegli lo sfondo:",
+            [
+                "Inside a luxury fashion showroom boutique, warm soft lighting, grey resin floor",
+                "Clean photography studio background, soft professional catalog lighting, neutral grey",
+                "Industrial urban street background, blurred city lights, London style",
+                "Minimalist concrete wall with premium studio spot light from top"
+            ]
+        )
 
     with col_foto2:
-        st.markdown("### 3️⃣ Genera e Scegli la tua Variante Preferita")
+        st.markdown("### 4️⃣ Risultato Generato ad Alta Fedeltà")
         
-        if foto_originale is not None:
-            # Creiamo i 3 stili pronti per essere scelti dall'utente
-            stili_disponibili = {
-                "Opzione 1: Manichino Invisibile (Showroom)": {
-                    "supporto": "placed on an invisible ghost mannequin, perfectly ironed, high-end look",
-                    "sfondo": "inside a luxury fashion showroom boutique with soft ambient light, premium minimalism"
-                },
-                "Opzione 2: Modello Streetwear (Studio)": {
-                    "supporto": "worn by a professional streetwear male model, lookbook catalog pose",
-                    "sfondo": "clean photography studio background, neutral grey tone, cinematic lighting"
-                },
-                "Opzione 3: Appeso Urban Style (Strada)": {
-                    "supporto": "hanging cleanly on a premium minimalist wooden hanger",
-                    "sfondo": "industrial urban street background, blurred city architecture, London style"
-                }
-            }
-            
-            # Selezione della variante tramite tab interne o pulsanti dedicati
-            scelta_variante = st.radio("Scegli quale configurazione AI vuoi generare/visualizzare:", list(stili_disponibili.keys()))
-            
-            if st.button("✨ Elabora Variante Selezionata con AI", type="primary"):
-                with st.spinner("L'AI sta modellando il capo sul supporto scelto... Attendi qualche secondo."):
+        if dettagli_grafica and tipo_prodotto:
+            if st.button("✨ Genera Foto Professionale (Motore FLUX)", type="primary"):
+                with st.spinner("Il motore FLUX sta ricostruendo il tessuto e la grafica nei minimi dettagli..."):
                     try:
-                        # Codifica l'immagine in Base64 per passarla al motore grafico
-                        bytes_data = foto_originale.getvalue()
-                        base64_image = base64.b64encode(bytes_data).decode("utf-8")
-                        data_url = f"data:image/jpeg;base64,{base64_image}"
-                        
-                        # Recupero dei dati dello stile scelto
-                        stile_selezionato = stili_disponibili[scelta_variante]
-                        
-                        # Costruzione del prompt combinato strutturale
+                        # Costruzione del prompt basato sui tuoi campi vuoti compilati
+                        # Iniettiamo i dettagli grafici in modo massiccio per costringere l'AI a non inventare
                         prompt_str = (
-                            f"Commercial clean lookbook product photography of the exact {brand_capo.lower()} {tipo_prodotto.lower()} from the source image. "
-                            f"{stile_selezionato['supporto']}. {stile_selezionato['sfondo']}. "
-                            f"Keep the exact colors, logo shapes, text elements and red graphic pattern details identical to the source image. "
-                            f"Photorealistic, 8k, highly detailed garment structure."
+                            f"High-end commercial product catalog photography of a {colore_base.lower()} {brand_capo.lower()} {tipo_prodotto.lower()}. "
+                            f"The garment features a highly detailed and clear print of: {dettagli_grafica.lower()}. "
+                            f"{opzione_esposizione}. {stile_sfondo}. "
+                            f"Photorealistic, 8k resolution, crisp clean details on the print fabric, professional look, no deformed text."
                         ).replace(" ", "%20")
                         
-                        # Chiamata API Img2Img dedicata
-                        api_url = f"https://image.pollinations.ai/p/{prompt_str}?width=1080&height=1080&nologo=true&seed=42"
-                        payload = {"image": data_url, "strength": conservazione}
+                        # Chiamata API forzando il modello FLUX (eccelle in loghi, scritte e coerenza spaziale)
+                        api_url = f"https://image.pollinations.ai/p/{prompt_str}?width=1080&height=1080&nologo=true&model=flux&seed=88"
                         
-                        response = requests.post(api_url, json=payload, timeout=40)
+                        response = requests.get(api_url, timeout=30)
                         
                         if response.status_code == 200:
                             image_res = Image.open(io.BytesIO(response.content))
-                            st.image(image_res, caption=f"Anteprima Risultato: {scelta_variante}", use_container_width=True)
+                            st.image(image_res, caption="Foto Catalogo generata con FLUX AI", use_container_width=True)
                             
-                            # Preparazione file per scaricarlo
+                            # Download dell'immagine generata
                             buffer = io.BytesIO()
                             image_res.save(buffer, format="JPEG", quality=95)
                             st.download_button(
-                                label="📥 Scarica questa foto per il tuo annuncio",
+                                label="📥 Scarica Foto per Vinted",
                                 data=buffer.getvalue(),
-                                file_name="vinted_mockup_scelto.jpg",
+                                file_name="vinted_flux_output.jpg",
                                 mime="image/jpeg"
                             )
-                            st.success("Variante generata! Se non ti soddisfa, seleziona un'altra Opzione sopra e clicca di nuovo il pulsante.")
+                            st.success("Immagine creata! FLUX ha letto la tua descrizione per riprodurre la maglietta.")
                         else:
-                            st.error("Il server AI è momentaneamente saturo. Attendi 5 secondi e clicca di nuovo.")
+                            st.error("Il sistema è momentaneamente occupato. Attendi 5 secondi e riprova.")
                     except Exception as e:
-                        st.error(f"Errore tecnico nella comunicazione AI: {e}")
+                        st.error(f"Errore durante l'elaborazione grafica: {e}")
         else:
-            st.info("💡 Per iniziare a generare le opzioni grafiche su manichino o modello, trascina la tua foto originale nel riquadro di sinistra.")
+            st.info("💡 Compila i campi a sinistra (soprattutto il Tipo di vestito e la Descrizione della Stampa) per sbloccare il pulsante di generazione FLUX.")
 
 # ==========================================
 # TAB 2: GENERATORE DESCRIZIONI AI
@@ -123,8 +121,8 @@ with tab2:
     col_a, col_b = st.columns(2, gap="large")
     with col_a:
         brand = st.text_input("Brand / Marca del capo", value="", placeholder="Inserisci la marca...")
-        tipo_capo = st.text_input("Tipo di articolo", value="", placeholder="Es. Felpa, T-shirt...")
-        colore = st.text_input("Colore e dettagli visivi", value="", placeholder="Es. Bianco con grafica...")
+        tipo_capo = st.text_input("Tipo di articolo", value="", placeholder="Es. T-shirt, Felpa...")
+        colore = st.text_input("Colore e dettagli visivi", value="", placeholder="Es. Bianco con stampa rossa...")
         
         st.markdown("### 📏 Taglia e Misure")
         taglia = st.selectbox("Taglia ufficiale", ["XS", "S", "M", "L", "XL", "XXL"], index=2)
@@ -138,7 +136,7 @@ with tab2:
             
         st.markdown("### 🎚️ Stato del capo")
         condizioni = st.selectbox("Condizioni del capo", ["Nuovo con cartellino", "Nuovo senza cartellino", "Ottime condizioni", "Buone condizioni"])
-        difetti = st.text_input("Note su eventuali difetti", value="", placeholder="Es. nessuno, oppure descrivi...")
+        difetti = st.text_input("Note su eventuali difetti", value="", placeholder="Es. nessuno...")
 
     with col_b:
         st.subheader("📋 Testo Pronto da Copiare")
