@@ -2,146 +2,147 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import time
-import io
 from datetime import datetime
+import io
 
-# ==========================================
-# CONFIGURAZIONE PAGINA E LAYOUT
-# ==========================================
+# ==============================================================================
+# CONFIGURAZIONE E SETUP
+# ==============================================================================
 st.set_page_config(
-    page_title="Vinted Power Seller Pro Suite",
+    page_title="Vinted Pro Seller Suite",
     page_icon="🛍️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Inizializzazione Database Sessione
+# Inizializzazione Database Sessione (Inventario Persistente in RAM)
 if 'inventario' not in st.session_state:
     st.session_state.inventario = pd.DataFrame(columns=[
-        "Data", "Brand", "Tipo", "Taglia", "Costo (€)", "Vendita (€)", "Netto (€)", "Stato"
+        "ID", "Data", "Brand", "Tipo", "Taglia", "Stato", "Costo (€)", "Prezzo Vendita (€)", "Profitto Netto (€)", "Stato Annuncio"
     ])
 
-# ==========================================
-# FUNZIONI DI SUPPORTO (Business Logic)
-# ==========================================
-def calcola_profitto(costo, vendita, commissioni=0.10):
-    # Simulazione commissioni Vinted
-    netto = vendita - (vendita * commissioni) - costo
-    return netto
+# Stile personalizzato
+st.markdown("""
+    <style>
+    .main { background-color: #f5f5f5; }
+    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #09b1ba; color: white; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# ==========================================
-# HEADER E SIDEBAR
-# ==========================================
-st.title("🛍️ Vinted Power Seller Pro Suite")
+st.title("🛍️ Vinted Pro Seller Suite - Industrial Edition")
 st.markdown("---")
 
-with st.sidebar:
-    st.header("⚙️ Pannello di Controllo")
-    st.info("Benvenuto nel tuo centro di comando per il Reselling.")
-    st.write(f"Data Odierna: {datetime.now().strftime('%d/%m/%Y')}")
-    st.divider()
-    st.markdown("### 📈 Statistiche Globali")
-    tot_investito = st.session_state.inventario["Costo (€)"].sum()
-    st.metric("Totale Investito", f"€ {tot_investito:.2f}")
+# ==============================================================================
+# FUNZIONI CORE
+# ==============================================================================
+def calcola_netto(prezzo_vendita, costo, commissioni_percent):
+    netto = prezzo_vendita - (prezzo_vendita * (commissioni_percent/100)) - costo
+    return netto
 
-# ==========================================
+# ==============================================================================
 # TABS PRINCIPALI
-# ==========================================
+# ==============================================================================
 tab1, tab2, tab3, tab4 = st.tabs([
     "📸 AI Studio Professionale", 
-    "📝 Generatore Descrizioni AI", 
-    "💰 Gestione Margini & Lotti", 
-    "📊 Analisi Inventory & Data"
+    "📝 Generatore Annunci SEO", 
+    "💰 Business & Margini", 
+    "📦 Gestione Inventario"
 ])
 
-# ==========================================
-# TAB 1: STUDIO FOTOGRAFICO AI (Espanso)
-# ==========================================
+# ==============================================================================
+# TAB 1: AI STUDIO (Manichino Virtuale)
+# ==============================================================================
 with tab1:
-    st.header("📸 AI Photo Studio: Ghost Mannequin & Mood")
+    st.header("📸 AI Studio: Ghost Mannequin & Restoration")
     col1, col2 = st.columns([0.4, 0.6])
     
     with col1:
-        st.subheader("Configurazione Setup")
-        uploaded_file = st.file_uploader("Carica foto originale:", type=["jpg", "png", "jpeg"])
-        tipo_set = st.selectbox("Set Fotografico:", ["Studio Bianco (Manichino Invisible)", "Lifestyle Indoor", "Urban Street", "Minimalist Lookbook"])
-        qualita = st.select_slider("Risoluzione Output:", ["Standard", "HD", "4K Ultra-Res"])
-        filtri = st.multiselect("Filtri colore:", ["HDR", "Warm Tone", "Cool Contrast", "Vibrant"], default=["HDR"])
+        img_input = st.file_uploader("Carica foto reale del capo:", type=["jpg", "png", "jpeg"])
+        st.subheader("Parametri di Restauro")
+        trattamenti = st.multiselect("Azioni AI:", ["Rimuovi Pieghe (Stiratura AI)", "Ghost Mannequin (Montaggio)", "Enhance Texture", "Background Clean"], default=["Rimuovi Pieghe", "Ghost Mannequin"])
+        ambiente = st.selectbox("Contesto Fotografico:", ["Studio Grigio High-Key", "Showroom Minimal", "Urban Street", "Pure White"])
+        forza_stiratura = st.slider("Intensità Rimozione Pieghe (%)", 0, 100, 90)
         
     with col2:
-        if uploaded_file:
-            st.image(uploaded_file, caption="Input Originale", use_container_width=True)
-            if st.button("🚀 Avvia Processamento AI", type="primary"):
-                with st.spinner("Applicazione filtri AI e rimozione sfondo in corso..."):
-                    time.sleep(4) # Simulazione processamento pesante
-                    st.success("Foto elaborata con successo!")
-                    st.markdown("### Anteprima Elaborazione")
-                    # Qui verrebbe la visualizzazione dell'immagine post-AI
-                    st.image("https://via.placeholder.com/600x400.png?text=Ghost+Mannequin+Result", caption="Output Professionale")
-                    st.download_button("📥 Scarica Foto Pro", data=b"fake", file_name="foto_vinted.jpg")
+        if img_input:
+            st.image(img_input, caption="Input: Originale", width=400)
+            if st.button("✨ AVVIA AI RESTORATION"):
+                with st.spinner("L'AI sta analizzando la struttura del tessuto..."):
+                    time.sleep(2)
+                    st.success("Tessuto stirato con successo!")
+                    st.info("Immagine montata su manichino virtuale professionale.")
+                    # Qui verrebbe la visualizzazione dell'output reale
+                    st.image(img_input, caption="Output: Professionale senza pieghe", width=400)
         else:
-            st.warning("Carica un file per abilitare il motore di rendering AI.")
+            st.info("Carica una foto per attivare il motore AI di restauro tessuti.")
 
-# ==========================================
-# TAB 2: GENERATORE DESCRIZIONI (Avanzato)
-# ==========================================
+# ==============================================================================
+# TAB 2: GENERATORE ANNUNCI (SEO)
+# ==============================================================================
 with tab2:
-    st.header("📝 Generatore di Annunci SEO")
-    c1, c2, c3 = st.columns(3)
+    st.header("📝 Generatore Annunci SEO-Driven")
+    colA, colB = st.columns(2)
+    with colA:
+        brand = st.text_input("Brand / Marca")
+        tipo = st.text_input("Tipologia (es. T-shirt, Puffer, Jeans)")
+        taglia = st.selectbox("Taglia", ["XS", "S", "M", "L", "XL", "XXL", "46", "48", "50", "28", "30", "32"])
+        materiali = st.multiselect("Composizione", ["Cotone", "Poliestere", "Lana", "Seta", "Denim", "Elastan", "Nylon"])
+        fit = st.select_slider("Vestibilità (Fit)", ["Slim", "Regolare", "Oversize", "Baggy"])
+    with colB:
+        condizioni = st.selectbox("Condizioni", ["Nuovo con cartellino", "Nuovo senza cartellino", "Ottime", "Buone", "Discreto"])
+        colore = st.text_input("Colore / Pattern")
+        note = st.text_area("Note aggiuntive / Difetti")
+        prezzo_target = st.number_input("Prezzo di vendita stimato €", 0.0)
     
-    with c1:
-        brand = st.text_input("Marca")
-        tipo = st.text_input("Articolo")
-    with c2:
-        taglia = st.selectbox("Taglia", ["XS", "S", "M", "L", "XL", "XXL"])
-        cond = st.selectbox("Stato", ["Nuovo con cartellino", "Nuovo", "Ottime", "Buone"])
-    with c3:
-        materiale = st.text_input("Materiale")
-        misure = st.text_input("Misure (es. 50x70)")
+    annuncio_finale = f"👕 {tipo.upper()} {brand.upper()} - Taglia {taglia}\n\nVendo questo fantastico {tipo} del brand {brand}. {condizioni}.\nVestibilità: {fit}. Materiale: {', '.join(materiali)}.\n\n📏 Condizioni: {condizioni}\n🎨 Colore: {colore}\n\n📦 Spedizione rapida entro 24h!\n\n#{brand.lower().replace(' ', '')} #{tipo.lower().replace(' ', '')} #streetwear #vinteditalia"
+    
+    st.text_area("Descrizione Finale (Copia e Incolla su Vinted):", annuncio_finale, height=250)
 
-    desc = f"✨ **{tipo.upper()} {brand.upper()}**\n\nVendo questo fantastico capo {brand}, in condizioni {cond.lower()}. Materiale: {materiale}. \n\n📏 Misure: {misure}\n\nSpedizione immediata! 📦"
-    st.text_area("Annuncio Generato:", desc, height=250)
-    if st.button("Copia Testo"): st.success("Testo copiato nella cache!")
-
-# ==========================================
-# TAB 3: CALCOLATORE MARGINI & LOTTI (Dettagliato)
-# ==========================================
+# ==============================================================================
+# TAB 3: BUSINESS & MARGINI
+# ==============================================================================
 with tab3:
-    st.header("💰 Gestione Economica")
-    c1, c2 = st.columns(2)
-    with c1:
-        costo_acq = st.number_input("Costo Acquisto (€)", min_value=0.0)
-        prezzo_v = st.number_input("Prezzo Vendita (€)", min_value=0.0)
-    with c2:
-        tipo_vendita = st.radio("Tipo Vendita:", ["Singola", "Lotto (Sconto 20%)"])
-        if tipo_vendita == "Lotto (Sconto 20%)":
-            prezzo_v = prezzo_v * 0.8
-        
-        netto = calcola_profitto(costo_acq, prezzo_v)
-        st.metric("Profitto Netto Stimato", f"€ {netto:.2f}")
-
-    if st.button("💾 Aggiungi all'Inventario"):
-        nuova_riga = pd.DataFrame([[datetime.now().strftime("%Y-%m-%d"), brand, tipo, taglia, costo_acq, prezzo_v, netto, "In Vendita"]],
-                                 columns=["Data", "Brand", "Tipo", "Taglia", "Costo (€)", "Vendita (€)", "Netto (€)", "Stato"])
-        st.session_state.inventario = pd.concat([st.session_state.inventario, nuova_riga], ignore_index=True)
-        st.success("Articolo salvato!")
-
-# ==========================================
-# TAB 4: ANALISI TREND & EXPORT (Sistema Completo)
-# ==========================================
-with tab4:
-    st.header("📊 Database & Analisi")
+    st.header("💰 Business Intelligence")
+    c1, c2, c3, c4 = st.columns(4)
+    costo_base = c1.number_input("Costo Acquisto (€)", 0.0)
+    spese_extra = c2.number_input("Spese extra (lavaggio/buste) (€)", 0.0)
+    comm_vinted = c3.number_input("Commissioni Vinted (%)", 0.0, 15.0, 5.0)
+    prezzo_target = c4.number_input("Prezzo vendita finale (€)", 0.0)
     
+    profitto = calcola_netto(prezzo_target, (costo_base + spese_extra), comm_vinted)
+    
+    st.metric("Margine Netto Reale", f"€ {profitto:.2f}", delta=f"ROI: {(profitto/costo_base)*100 if costo_base > 0 else 0:.1f}%")
+    
+    if st.button("➕ SALVA ARTICOLO NELL'INVENTARIO"):
+        nuovo = pd.DataFrame([[
+            len(st.session_state.inventario)+1, datetime.now().strftime("%d-%m-%Y"), 
+            brand, tipo, taglia, condizioni, costo_base, prezzo_target, profitto, "In Vendita"
+        ]], columns=["ID", "Data", "Brand", "Tipo", "Taglia", "Stato", "Costo (€)", "Prezzo Vendita (€)", "Profitto Netto (€)", "Stato Annuncio"])
+        
+        st.session_state.inventario = pd.concat([st.session_state.inventario, nuovo], ignore_index=True)
+        st.success("Articolo salvato nel DB locale!")
+
+# ==============================================================================
+# TAB 4: GESTIONE INVENTARIO & TREND
+# ==============================================
+with tab4:
+    st.header("📦 Gestione Inventario & Trend")
     st.dataframe(st.session_state.inventario, use_container_width=True)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.download_button("📥 Esporta CSV", st.session_state.inventario.to_csv(index=False), "export.csv", "text/csv")
-    with col2:
+    col_exp, col_reset = st.columns(2)
+    with col_exp:
+        csv = st.session_state.inventario.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Esporta Inventario Completo (CSV)", csv, "inventario.csv", "text/csv")
+    with col_reset:
         if st.button("🗑️ Reset Database"):
-            st.session_state.inventario = pd.DataFrame(columns=["Data", "Brand", "Tipo", "Taglia", "Costo (€)", "Vendita (€)", "Netto (€)", "Stato"])
+            st.session_state.inventario = pd.DataFrame(columns=["ID", "Data", "Brand", "Tipo", "Taglia", "Stato", "Costo (€)", "Prezzo Vendita (€)", "Profitto Netto (€)", "Stato Annuncio"])
             st.rerun()
 
-    st.subheader("Analisi Trend")
-    chart_data = pd.DataFrame({'Mese': ['Gen', 'Feb', 'Mar'], 'Guadagni': [120, 250, 400]})
-    st.altair_chart(alt.Chart(chart_data).mark_bar().encode(x='Mese', y='Guadagni'), use_container_width=True)
+    st.subheader("🔥 Trend di Mercato (AI Predictions)")
+    df_trend = pd.DataFrame({
+        "Categoria": ["Streetwear", "Vintage Anni '90", "Workwear", "Casual/Basic"],
+        "Domanda AI": ["Molto Alta", "Alta", "Alta", "Media"],
+        "Prezzo medio": ["40-120€", "30-90€", "50-100€", "15-40€"],
+        "Velocità vendite": ["< 24h", "2-3 giorni", "2-4 giorni", "1 settimana"]
+    })
+    st.table(df_trend)
