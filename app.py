@@ -1,4 +1,4 @@
-import streamlit as st
+code_content = """import streamlit as st
 import pandas as pd
 import requests
 import io
@@ -6,7 +6,7 @@ import random
 from PIL import Image, ImageFilter, ImageOps, ImageEnhance
 from rembg import remove
 
-# 1. CONFIGURAZIONE DELLA PAGINA (Deve essere tassativamente il primo comando Streamlit)
+# 1. CONFIGURAZIONE DELLA PAGINA (Deve essere il primo comando Streamlit)
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
 
 # Titolo principale dell'applicazione
@@ -28,7 +28,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # ==========================================
 with tab1:
     st.header("📸 Ottimizzazione Sfondo Fotografico via AI")
-    st.write("Isola la tua maglietta, correggi i difetti di contrasto e posizionala su un manichino o una gruccia professionale.")
+    st.write("Isola la tua maglietta, correggi i difetti di contrasto e posizionala su un supporto professionale senza sovrapposizioni.")
 
     # Layout a due colonne: Input a sinistra, Risultato a destra
     col_foto1, col_foto2 = st.columns([1.2, 1.8], gap="large")
@@ -40,12 +40,18 @@ with tab1:
         if foto_originale:
             st.image(foto_originale, caption="Foto originale caricata", width=140)
 
-        st.markdown("### ⚙️ Filtri di Correzione e Risoluzione")
-        # Interruttore fondamentale per evitare la sparizione del tessuto bianco
-        maglietta_bianca_fix = st.checkbox(
-            "👕 Attiva protezione capi bianchi/chiari", 
-            value=True, 
-            help="Forza l'AI a scansionare i bordi del tessuto se lo sfondo originale è chiaro, impedendo che rimanga solo il logo."
+        st.markdown("### ⚙️ Impostazioni Scontornamento AI")
+        
+        # Sostituito il vecchio fix distruttivo con una selezione di modalità ottimizzate
+        modalita_scontorno = st.selectbox(
+            "Modalità di ritaglio del capo:",
+            [
+                "Standard (Consigliato per magliette bianche e colorate)",
+                "Bordi Precisi (Ottimo per dettagli complessi o sfondi difficili)",
+                "Forza Contrasto (Usa solo se il capo viene parzialmente cancellato)"
+            ],
+            index=0,
+            help="Se la maglietta scompare o rimangono solo i loghi, passa alla modalità Standard o Bordi Precisi."
         )
         
         # Permette di cambiare il seed per generare variazioni diverse dello stesso sfondo
@@ -53,54 +59,63 @@ with tab1:
         if "bg_seed" not in st.session_state or cambia_variante:
             st.session_state.bg_seed = random.randint(1, 9999)
 
-        st.markdown("### 2️⃣ Scegli il Supporto & lo Scenario")
+        st.markdown("### 2️⃣ Scegli lo Scenario (Sfondi Vuoti)")
         tipo_sfondo_scelto = st.selectbox(
-            "Dove vuoi posizionare il capo?",
+            "Seleziona l'ambiente in cui inserire il tuo capo:",
             [
-                "Manichino invisibile in Showroom di lusso, luci calde",
+                "Showroom di lusso (Sfondo vuoto con luci calde)",
                 "Gruccia in legno minimale su muro in cemento industriale",
-                "Manichino sartoriale in un negozio di Milano centro",
-                "Stand appendiabiti in metallo, sfondo studio grigio catalogo",
+                "Manichino sartoriale vuoto in un negozio di Milano centro",
+                "Stand appendiabiti in metallo vuoto, studio grigio catalogo",
                 "Sfondo bianco puro e-commerce (Stile Amazon/Zalando)",
-                "Boutique Streetwear moderna con luci al neon soft"
+                "Boutique Streetwear moderna vuota con luci al neon soft"
             ]
         )
 
-        proporzione_capo = st.slider("Dimensione del capo all'interno dello scenario (%):", 50, 90, 75)
+        proporzione_capo = st.slider("Dimensione del capo all'interno dello scenario (%):", 50, 90, 72)
 
     with col_foto2:
         st.markdown("### 3️⃣ Risultato Elaborato in Ultra HD")
         
         if foto_originale is not None:
             if st.button("✨ Genera Foto Catalogo HQ", type="primary"):
-                with st.spinner("Scontornamento avanzato e fusione dei livelli in corso..."):
+                with st.spinner("Scontornamento preciso e fusione dei livelli in corso..."):
                     try:
                         # Caricamento immagine e auto-rotazione basata sui dati EXIF dello smartphone
                         img_input = Image.open(foto_originale)
                         img_input = ImageOps.exif_transpose(img_input)
                         
-                        # ALGORITMO ANTI-INVISIBILITÀ PER CAPI BIANCHI
-                        if maglietta_bianca_fix:
-                            # Creiamo temporaneamente un'immagine ad altissimo contrasto per far vedere la maglietta all'AI
-                            img_contrasto = ImageEnhance.Contrast(img_input).enhance(3.2)
-                            img_contrasto = ImageEnhance.Brightness(img_contrasto).enhance(0.55)
-                            maschera_rembg = remove(img_contrasto).convert("RGBA")
+                        # APPLICAZIONE DELLA MODALITÀ DI SCONTORNAMENTO SELEZIONATA
+                        if modalita_scontorno == "Standard (Consigliato per magliette bianche e colorate)":
+                            maglietta_isolata = remove(img_input).convert("RGBA")
                             
-                            # Estraiamo il canale Alfa (la sagoma) e lo applichiamo alla foto con i colori originali
+                        elif modalita_scontorno == "Bordi Precisi (Ottimo per dettagli complexes o sfondi difficili)":
+                            # Utilizza l'alpha matting nativo di rembg per evitare tagli errati sui capi chiari
+                            maglietta_isolata = remove(
+                                img_input, 
+                                alpha_matting=True, 
+                                alpha_matting_foreground_threshold=240, 
+                                alpha_matting_background_threshold=10
+                            ).convert("RGBA")
+                            
+                        else: # Forza Contrasto (versione bilanciata non distruttiva)
+                            img_elaborata = ImageEnhance.Contrast(img_input).enhance(1.8)
+                            img_elaborata = ImageEnhance.Sharpness(img_elaborata).enhance(1.5)
+                            maschera_rembg = remove(img_elaborata).convert("RGBA")
+                            
+                            # Ripristina i colori originali usando solo la maschera di ritaglio
                             alpha_canale = maschera_rembg.getchannel('A')
                             maglietta_isolata = img_input.convert("RGBA")
                             maglietta_isolata.putalpha(alpha_canale)
-                        else:
-                            maglietta_isolata = remove(img_input).convert("RGBA")
                         
-                        # Mappatura dei prompt per l'AI generativa (Risoluzione Ultra HD richiesta nei dettagli)
+                        # MAPPA DEI PROMPT CORRETTA: Generano solo ambienti VUOTI, senza vestiti pre-esistenti dell'AI!
                         prompt_mappa = {
-                            "Manichino invisibile in Showroom di lusso, luci calde": "A clothing item displayed on an invisible mannequin hanger inside a luxury fashion boutique store, warm cinematic lighting, blurry rich background, premium look, commercial product photography, 8k resolution, highly detailed",
-                            "Gruccia in legno minimale su muro in cemento industriale": "An elegant minimalist wooden clothes hanger hanging against a raw grey concrete wall, soft side lighting, professional product photography, urban style, 8k resolution, crisp details",
-                            "Manichino sartoriale in un negozio di Milano centro": "A high-end fashion boutique background in Milan, an elegant tailor mannequin stand torso holding clothes, warm soft boutique lighting, blurred background, 8k, sharp focus",
-                            "Stand appendiabiti in metallo, sfondo studio grigio catalogo": "Professional e-commerce studio photography, a sleek metal clothing rack stand, neutral clean soft grey studio background, commercial lighting, ultra sharp",
-                            "Sfondo bianco puro e-commerce (Stile Amazon/Zalando)": "Clean minimalist bright solid pure white studio background for e-commerce website catalog, sharp focus, seamless white backdrop, high resolution",
-                            "Boutique Streetwear moderna con luci al neon soft": "Modern hypebeast streetwear clothing store interior, high-end display rack, soft purple and white neon ambient lights, blurred background, crisp 8k texturing"
+                            "Showroom di lusso (Sfondo vuoto con luci calde)": "An empty luxury fashion boutique store showroom, elegant minimalist background, warm cinematic lighting, blurry rich interior, premium look, commercial product photography, 8k resolution, highly detailed, no clothes, empty space",
+                            "Gruccia in legno minimale su muro in cemento industriale": "An empty minimalist wooden clothes hanger hanging symmetrically against a raw grey concrete wall, soft side lighting, professional product photography, urban style, 8k resolution, crisp details, no clothes",
+                            "Manichino sartoriale vuoto in un negozio di Milano centro": "A high-end fashion boutique background in Milan, an empty elegant vintage tailor mannequin stand torso with no clothes on it, warm soft boutique lighting, blurred interior background, 8k, sharp focus",
+                            "Stand appendiabiti in metallo vuoto, studio grigio catalogo": "Professional e-commerce studio photography, a sleek empty metal clothing rack stand, neutral clean soft grey studio background, commercial studio lighting, ultra sharp, no clothes, empty display",
+                            "Sfondo bianco puro e-commerce (Stile Amazon/Zalando)": "Clean minimalist bright solid pure white studio background for e-commerce website clothing catalog, sharp focus, seamless white backdrop, high resolution, empty clean space",
+                            "Boutique Streetwear moderna vuota con luci al neon soft": "Modern hypebeast streetwear clothing store interior showroom, empty high-end display rack, soft purple and white neon ambient lights, blurred background, crisp 8k texturing, no clothes, empty interior"
                         }
                         
                         # Richiesta dello sfondo Ultra HD (1440x1440 pixel)
@@ -118,17 +133,17 @@ with tab1:
                             
                             # Generazione di un'ombra morbida realistica sotto il capo
                             alpha_ombra = maglietta_isolata.getchannel('A')
-                            ombra = Image.new("RGBA", maglietta_isolata.size, (0, 0, 0, 48))
+                            ombra = Image.new("RGBA", maglietta_isolata.size, (0, 0, 0, 45))
                             ombra.putalpha(alpha_ombra)
-                            ombra = ombra.resize((maglietta_isolata.width + 24, maglietta_isolata.height + 24))
-                            ombra = ombra.filter(ImageFilter.GaussianBlur(20))
+                            ombra = ombra.resize((maglietta_isolata.width + 20, maglietta_isolata.height + 20))
+                            ombra = ombra.filter(ImageFilter.GaussianBlur(18))
                             
                             # Posizionamento e composizione finale dei livelli sul canvas 1440p
                             telaio_trasparente = Image.new("RGBA", (1440, 1440), (0, 0, 0, 0))
                             pos_x = (1440 - maglietta_isolata.width) // 2
                             pos_y = (1440 - maglietta_isolata.height) // 2
                             
-                            telaio_trasparente.paste(ombra, (pos_x - 12, pos_y + 14))
+                            telaio_trasparente.paste(ombra, (pos_x - 10, pos_y + 12))
                             telaio_trasparente.paste(maglietta_isolata, (pos_x, pos_y), mask=maglietta_isolata)
                             
                             immagine_pronta = Image.alpha_composite(sfondo_reale, telaio_trasparente).convert("RGB")
@@ -138,7 +153,7 @@ with tab1:
                             immagine_pronta = esaltatore_nitidezza.enhance(1.4)
                             
                             # Mostra l'anteprima bloccando la larghezza per evitare l'allungamento sgranato del browser
-                            st.image(immagine_pronta, caption="Anteprima del tuo annuncio premium", width=580)
+                            st.image(immagine_pronta, caption="Anteprima del tuo annuncio premium in HD", width=580)
                             
                             # Salvataggio in memoria alla massima qualità fotografica (Zero Compressione)
                             buffer = io.BytesIO()
@@ -186,7 +201,6 @@ with tab2:
     with col_b:
         st.subheader("📋 Testo Pronto da Copiare")
         
-        # Generazione dinamica di titoli e tag commerciali
         titolo_generato = f"✨ {tipo_capo.capitalize()} {brand.upper()} - Taglia {taglia}" if tipo_capo or brand else ""
         nota_difetti = f"• 🔎 Difetti: {difetti.capitalize()}" if difetti else "• 🔎 Difetti: Nessuno, capo mantenuto in modo maniacale."
         
@@ -199,7 +213,7 @@ with tab2:
         brand_tag = brand.replace(' ', '').lower() if brand else "brand"
         tipo_tag = tipo_capo.replace(' ', '').lower() if tipo_capo else "abbigliamento"
 
-        descrizione_generata = f"""🇮🇹 DESCRIZIONE ARTICOLO PREMIUM:
+        descrizione_generata = f\"\"\"🇮🇹 DESCRIZIONE ARTICOLO PREMIUM:
 Vendo bellissima {tipo_capo.lower() if tipo_capo else 'maglia'} originale {brand.capitalize() if brand else '-'}. Il capo è stato lavato professionalmente, igienizzato e conservato piegato.
 
 • 🎨 Colore e Dettagli: {colore.capitalize() if colore else '-'}
@@ -212,7 +226,7 @@ Spedizione super rapida e protetta entro 24 ore dall'acquisto 📦. Se hai doman
 
 ---
 # {brand_tag} #{tipo_tag} #taglia{taglia.lower()} #streetwear #vinteditalia #reseller
-"""
+\"\"\"
         st.text_input("📌 Titolo da inserire su Vinted:", titolo_generato)
         st.text_area("📄 Descrizione completa da inserire su Vinted:", descrizione_generata, height=340)
 
@@ -276,3 +290,9 @@ with tab4:
             "Incremento Domanda": ["+145%", "+120%", "+110%", "+85%"]
         })
         st.dataframe(tabelle_nicchie, use_container_width=True, hide_index=True)
+"""
+
+with open("app.py", "w", encoding="utf-8") as f:
+    f.write(code_content)
+
+print("File app.py successfully generated.")
