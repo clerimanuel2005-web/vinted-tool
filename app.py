@@ -9,6 +9,12 @@ from rembg import remove, new_session
 # 1. CONFIGURAZIONE DELLA PAGINA (Deve essere il primo comando Streamlit)
 st.set_page_config(page_title="Vinted Power Seller Suite", page_icon="🛍️", layout="wide")
 
+# Inizializzazione in cache delle sessioni AI per non saturare la memoria e velocizzare l'app
+if "session_standard" not in st.session_state:
+    st.session_state.session_standard = new_session(model_name="u2net")
+if "session_clothing" not in st.session_state:
+    st.session_state.session_clothing = new_session(model_name="u2net_clothing")
+
 # Titolo principale dell'applicazione
 st.title("🛍️ Vinted Power Seller Suite")
 st.write("L'hub definitivo per ottimizzare le foto dei tuoi capi, calcolare i margini e scrivere annunci perfetti.")
@@ -86,17 +92,25 @@ with tab1:
                         
                         # APPLICAZIONE DELLA MODALITÀ DI SCONTORNAMENTO SELEZIONATA
                         if modalita_scontorno == "Bordi Precisi (Specifico per Magliette Bianche/Chiare)":
-                            # Inizializziamo il modello specifico per l'abbigliamento per evitare l'effetto trasparenza sul bianco
-                            sessione_clothing = new_session(model_name="u2net_clothing")
-                            maglietta_isolata = remove(img_input, session=sessione_clothing).convert("RGBA")
+                            # TRUCCO TECNICO: Generiamo un'immagine ad altissimo contrasto temporanea solo per la maschera AI
+                            img_temporanea = ImageOps.autocontrast(img_input)
+                            img_temporanea = ImageEnhance.Contrast(img_temporanea).enhance(1.6)
+                            
+                            # Facciamo leggere all'AI l'immagine contrastata (dove i bordi bianchi sono evidenti)
+                            maschera_rembg = remove(img_temporanea, session=st.session_state.session_clothing).convert("RGBA")
+                            
+                            # Prendiamo la sagoma perfetta trovata dall'AI e la applichiamo alla foto originale pulita
+                            alpha_canale = maschera_rembg.getchannel('A')
+                            maglietta_isolata = img_input.convert("RGBA")
+                            maglietta_isolata.putalpha(alpha_canale)
                             
                         elif modalita_scontorno == "Standard (Consigliato per capi scuri o molto colorati)":
-                            maglietta_isolata = remove(img_input).convert("RGBA")
+                            maglietta_isolata = remove(img_input, session=st.session_state.session_standard).convert("RGBA")
                             
                         else:  # Forza Contrasto Avanzato
                             img_elaborata = ImageEnhance.Contrast(img_input).enhance(2.0)
                             img_elaborata = ImageEnhance.Sharpness(img_elaborata).enhance(1.8)
-                            maschera_rembg = remove(img_elaborata).convert("RGBA")
+                            maschera_rembg = remove(img_elaborata, session=st.session_state.session_standard).convert("RGBA")
                             
                             alpha_canale = maschera_rembg.getchannel('A')
                             maglietta_isolata = img_input.convert("RGBA")
@@ -158,7 +172,7 @@ with tab1:
                                 data=buffer.getvalue(),
                                 file_name="vinted_annuncio_hd.jpg",
                                 mime="image/jpeg"
-                            )
+                              )
                         else:
                             st.error("Il server di rendering dello sfondo non ha risposto. Riprova tra pochi secondi.")
                     except Exception as e:
