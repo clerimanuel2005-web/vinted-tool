@@ -1,6 +1,6 @@
 streamlit
 pandas
 requests
-pillow
+Pillow
 rembg
 numpy
