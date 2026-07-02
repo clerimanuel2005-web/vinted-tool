@@ -68,7 +68,15 @@ with tab1:
     with col1:
         img_input = st.file_uploader("Carica foto reale del capo:", type=["jpg", "png", "jpeg"])
         st.subheader("Parametri di Restauro")
-        trattamenti = st.multiselect("Azioni AI:", ["Rimuovi Pieghe (Stiratura AI)", "Ghost Mannequin (Montaggio)", "Enhance Texture", "Background Clean"], default=["Rimuovi Pieghe", "Ghost Mannequin"])
+        
+        # DEFINIZIONE CORRETTA DELLE OPZIONI PER EVITARE ERRORI
+        opzioni_ai = ["Rimuovi Pieghe (Stiratura AI)", "Ghost Mannequin (Montaggio)", "Enhance Texture", "Background Clean"]
+        trattamenti = st.multiselect(
+            "Azioni AI:", 
+            options=opzioni_ai, 
+            default=[opzioni_ai[0], opzioni_ai[1]]
+        )
+        
         ambiente = st.selectbox("Contesto Fotografico:", ["Studio Grigio High-Key", "Showroom Minimal", "Urban Street", "Pure White"])
         forza_stiratura = st.slider("Intensità Rimozione Pieghe (%)", 0, 100, 90)
         
@@ -137,7 +145,6 @@ with tab3:
 with tab4:
     st.header("📦 Gestione Inventario & Trend")
     
-    # Editor interattivo
     st.session_state.inventario = st.data_editor(
         st.session_state.inventario,
         column_config={
