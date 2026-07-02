@@ -12,7 +12,7 @@ st.title("🛍️ Vinted Power Seller Suite")
 st.write("Gestisci, ottimizza e scala il tuo business di reselling su Vinted.")
 
 # Inserisci qui la tua chiave API presa da Clipdrop
-CLIPDROP_API_KEY = "INSERISCI_QUI_LA_TUA_API_KEY"
+CLIPDROP_API_KEY = "8b1a58b08b6784767952334483c018df7695ec072df5e9c830c9feed64238c7cc1ea42ede46878e0520d89d128373c23"
 
 # Creazione delle 4 Schede di Gestione
 tab1, tab2, tab3, tab4 = st.tabs([
